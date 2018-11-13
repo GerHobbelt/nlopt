@@ -46,11 +46,6 @@ option (NLOPT_GUILE "build guile bindings" ON)
 option (NLOPT_SWIG "use SWIG to build bindings" ON)
 option (NLOPT_LINK_PYTHON "link Python libs" ON)
 
-set (NLOPT_SUFFIX)
-if (NLOPT_CXX)
-  set (NLOPT_SUFFIX _cxx)
-endif ()
-
 include (GNUInstallDirs)
 
 # Offer the user the choice of overriding the installation directories
@@ -220,7 +215,7 @@ endif ()
 
 install (FILES ${NLOPT_HEADERS} DESTINATION ${RELATIVE_INSTALL_INCLUDE_DIR})
 
-set (nlopt_lib nlopt${NLOPT_SUFFIX})
+set (nlopt_lib nlopt)
 add_library (${nlopt_lib} ${NLOPT_SOURCES})
 target_link_libraries (${nlopt_lib} ${M_LIBRARY})
 
@@ -289,18 +284,6 @@ if (NLOPT_PYTHON)
   find_package (NumPy)
 endif ()
 
-if (NOT DEFINED INSTALL_PYTHON_DIR AND PYTHONINTERP_FOUND)
-  execute_process ( COMMAND ${PYTHON_EXECUTABLE} -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=True, prefix='${CMAKE_INSTALL_PREFIX}'))"
-                    OUTPUT_VARIABLE _ABS_PYTHON_MODULE_PATH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE )
-
-  get_filename_component (_ABS_PYTHON_MODULE_PATH ${_ABS_PYTHON_MODULE_PATH} ABSOLUTE)
-  file (RELATIVE_PATH _REL_PYTHON_MODULE_PATH ${CMAKE_INSTALL_PREFIX} ${_ABS_PYTHON_MODULE_PATH})
-
-  set (INSTALL_PYTHON_DIR ${_REL_PYTHON_MODULE_PATH})
-
-endif ()
-
 if (NLOPT_GUILE)
   find_package (Guile)
 endif ()
@@ -324,8 +307,10 @@ if (OCTAVE_FOUND OR Matlab_FOUND)
   add_subdirectory (src/octave)
 endif ()
 
-enable_testing ()
-add_subdirectory (test)
+if (NLOPT_TESTS)				
+ enable_testing ()
+ add_subdirectory (test)
+endif ()		
 
 set (CPACK_PACKAGE_NAME          "${CMAKE_PROJECT_NAME}")
 set (CPACK_PACKAGE_VERSION_MAJOR "${NLOPT_MAJOR_VERSION}")
