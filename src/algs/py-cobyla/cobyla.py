@@ -22,23 +22,30 @@ class Cobyla:
         self.resmax = 0
 
         # simplex
-        self.sim = self.rho * np.eye((n, n))
+        self.sim = self.rho * np.matrix(np.eye((n, n)))
         self.optimal_vertex = self.X.copy()
 
         # inverse simplex
-        self.simi = (1 / self.rho) * np.eye((n, n))
+        self.simi = (1 / self.rho) * np.matrix(np.eye((n, n)))
 
         # for each vertex, m constrains values, f, resmax
         # last one for the best vertex
         self.datmat = np.zeros((n + 1, m + 2))
 
-        self.vsig = np.zeros((n + 1,  m))
-        self.veta = np.zeros((n,))
+        # a matrix (n x n)
+        self.a = None
+
+        self.vsig = None
+        self.veta = None
         self.sigb = np.zeros((n,))
         self.dx = np.zeros((n,))
         self.work = np.zeros((n,))
 
         self.iact = np.zeros((m + 1,))
+
+        # flags
+        self.ibrnch = 0
+        self.iflag = 0
 
         ### Local
         self.alpha = 0.25
@@ -46,6 +53,7 @@ class Cobyla:
         self.gamma = 0.5
         self.delta = 1.1
         self.parmu = 0
+        self.parsig = 0
         
         self.nfvals = 0
 
@@ -93,6 +101,74 @@ class Cobyla:
         if ((self.nfvals > 0) and (self.nfvals >= self.maxfun)):
             # Error: COBYLA_MAXFUN (rc = 1)
             raise UserWarning('cobyla: maximum number of function evaluation')
+
+        self.set_datmat()
+
+        self.ibrnch = 1
+        self.promote_best()
+        self.linear_coef()
+
+        self.acceptable_simplex()
+        
+        
+    def promote_best(self):
+        # L130, L140
+        nbest = self.n + 1
+        phi = lambda fx, resmax: fx + (self.parmu * resmax)
+        
+        phimin = phi(fx=self.datmat[-1, -2], resmax=self.datmat[-1, -1])
+        for j, row in zip(range(self.n + 1), self.datmat):
+            *_, fx_j, resmax_j = row[j]
+            temp = phi(fx_j, resmax_j)
+            if temp < phimin:
+                nbest = j
+            else:
+                resmax_best = self.datmat[nbest, -1]
+                cond = (temp == phimin) and (self.parmu == 0) and (resmax_j < resmax_best)
+                nbest = j if cond else nbest
+
+        if (nbest <= self.n):
+            self.datmat[[nbest, -1]] = self.datmat[[-1, nbest]]
+            temp = np.array(self.sim[nbest])
+            self.sim[nbest] = np.zeros(len(temp))
+            self.optimal_vertex += temp
+            self.sim -= temp
+            self.simi[nbest] = -self.simi.sum(axis=0)
+
+        error = (self.sim * self.simi).max()
+        if error > .1:
+            # Error: COBYLA_MAXFUN (rc = 2)
+            raise UserWarning('cobyla: rounding errors are becoming damaging')
+
+        
+    def linear_coef(self):
+        *con, fx = self.datmat[-1, :-1]
+        self.con -= con
+        self.fval -= fx
+
+        w = np.matrix(self.datmat[:-2] + self.con)
+        self.a = (w * self.simi)
+        self.a[-1] *= -1
+
+        
+    def acceptable_simplex(self):
+        self.parsig = self.alpha * rho
+        pareta = self.beta * rho
+        self.vsig = 1 / (sum(np.array(self.simi)**2, axis=0))**.5
+        self.veta = (sum(np.array(self.sim)**2, axis=1))**.5
+        self.iflag = not(np.any(vsig < parsig) or np.any(veta > pareta))
+        
+        if self.ibrnch == 1 or self.iflag == 1:
+            return
+
+        
+        
+            
+            
+                
+            
+        
+        
             
         
         
