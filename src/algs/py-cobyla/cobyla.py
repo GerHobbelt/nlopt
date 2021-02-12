@@ -32,13 +32,12 @@ class Cobyla:
         # last one for the best vertex
         self.datmat = np.zeros((n + 1, m + 2))
 
-        # a matrix (n x n)
-        self.a = None
+        self.a = None # (m+1) * n
 
         self.vsig = None
         self.veta = None
         self.sigb = np.zeros((n,))
-        self.dx = np.zeros((n,))
+        self.dx = None
         self.work = np.zeros((n,))
 
         self.iact = np.zeros((m + 1,))
@@ -142,12 +141,12 @@ class Cobyla:
 
         
     def linear_coef(self):
-        *con, fx = self.datmat[-1, :-1]
-        self.con -= con
-        self.fval -= fx
+        tcon = *con, fx = -self.datmat[-1, :-1]
+        self.con = con
+        self.fval = fx
 
-        w = np.matrix(self.datmat[:-2] + self.con)
-        self.a = (w * self.simi)
+        w = np.matrix(self.datmat[:-1] + tcon)
+        self.a = (self.simi * w).T  # (m+1) * n
         self.a[-1] *= -1
 
         
@@ -157,9 +156,37 @@ class Cobyla:
         self.vsig = 1 / (sum(np.array(self.simi)**2, axis=0))**.5
         self.veta = (sum(np.array(self.sim)**2, axis=1))**.5
         self.iflag = not(np.any(vsig < parsig) or np.any(veta > pareta))
-        
+
+        # If a new vertex is needed to improve acceptability, then decide which
+        # vertex to drop from simplex
         if self.ibrnch == 1 or self.iflag == 1:
             return
+
+        veta_max, jdrop = max(zip(self.veta, range(self.n)))
+        vsig_max, jdrop = max(zip(self.vsig, range(self.n))) if pareta >= veta_max else self.vsig[jdrop], jdrop
+
+        # Calculate the step to the new vertex and its sign
+        temp = gamma * rho * vsig_max
+        self.dx = temp * self.simi[..., jdrop]
+
+        ssum = np.array(np.dot(a, dx)).ravel()
+        #prod = np.sum(np.array(a) * dx, axis=1)
+        temp = self.datmat[-1, :-1]
+
+        cvmaxp = max((0, *(-ssum[:-1] -temp)))
+        cvmaxm = max((0, *(ssum[:-1] -temp)))
+
+        cond = (parmu * (cvmaxp - cvmaxm) > (2 * ssum[-1]))
+        dxsign = -1 if cond else 1
+
+        # Update the elements of SIM and SIMI, and set the next X
+        
+                
+                
+        
+            
+            
+            
 
         
         
