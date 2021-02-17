@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Cobyla:
     def __init__(self, x, F, C, rhobeg=0, rhoend=1, maxfun=1000):
         n = len(x)
@@ -209,8 +210,8 @@ class Cobyla:
         
     def _ajustments(self):
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
-        self.trstlp()
-        if ifull == 0:
+        self.trstlp.run(self)
+        if self.ifull == 0:
             temp = sum(self.dx ** 2)
             cond = (temp < 0.25 * (self.rho ** 2)) 
             if cond:
@@ -361,7 +362,7 @@ class Trstlp:
         self.optold = 0
         self.nact = 0
         self.nactx = 0
-        self.icon = 0
+        self.icon = None
         self.sp = None
         self.spabs = None
         self.tot = None
@@ -379,8 +380,8 @@ class Trstlp:
         self.iact = np.arange(self.cobyla.m + 1)
         self.vmultc = resmax - self.cobyla.con
 
-        cobyla.ifull = 1
-        cobyla.dx = np.zeros(self.cobyla.n)
+        self.cobyla.ifull = 1
+        self.cobyla.dx = np.zeros(self.cobyla.n)
 
         
     def L60(self):
@@ -670,9 +671,8 @@ class Trstlp:
             zdotw = sum(temp)
             zdwabs = sum(abs(temp))
 
-            temp = zdwabs + abs(zdotw)
-            acca = temp * 0.1
-            accb = temp * 0.2
+            acca = zdwabs + (0.1 * abs(zdotw))
+            accb = zdwabs + (0.2 * abs(zdotw))
             if (zdwabs >= acca) or (acca >= accb):
                 zdotw = 0
 
@@ -683,12 +683,64 @@ class Trstlp:
 
         if (self.mcon >= self.cobyla.m):
             self.vmultd[self.nact] = max(0, self.vmultd[self.nact])
-            
-            
+                        
         # Complete VMULTC by finding the new constraint residuals
         self.dxnew = self.cobyla.dx + (self.step * self.sdirn)
         if (self.mcon > self.nact):
-            pass
+            for k in range(self.nact+1, self.mcon+1):
+                kk = self.iact[k]
+                temp = np.dot(self.cobyla.a[kk], self.dxnew)
+                ssum = self.resmax - self.cobyla.con[kk] + temp
+                ssumabs = self.resmax + abs(self.cobyla.con[kk]) + abs(temp)
+
+                acca = ssumabs + (0.1 * abs(ssum))
+                accb = ssumabs + (0.2 * abs(ssum))
+                cond = ((ssumabs >= acca) or (acca >= accb))
+                self.vmultd[k] = 0 if cond else ssum
+
+        # Calculate the fraction of the step from DX to DXNEW that will be taken
+        self.ratio = 1
+        self.icon = None
+        for k in range(0, self.mcon + 1):
+            if self.vmultd[k] < 0:
+                temp = self.vmultc[k] / (self.vmultc[k] - vmultd)
+                if (temp < self.ratio):
+                    self.ratio = temp
+                    self.icon = k
+
+        # Update DX, VMULTC and RESMAX
+        temp = 1 - self.ratio
+        self.cobyla.dx = (temp * self.cobyla.dx) + (ratio * self.dxnew)
+        self.vmultc = (temp * self.vmultc) + (ratio * self.vmultd)
+        self.vmultc *= (self.vmultc > 0)
+
+        if (self.mcon == (self.cobyla.m -1)):
+            self.resmax = resold + (self.ratio * (self.resmax - resold))
+        
+        # If the full step is not acceptable then begin another iteration.
+        # Otherwise switch to stage two or end the calculation
+        if (self.icon is not None):
+            return self.L70()
+
+        if (self.step == self.stpful):
+            return 0
+
+        
+    def L480(self):
+        self.mcon = self.cobyla.m
+        self.icon = self.mcon
+        self.iact[self.mcon] = self.mcon
+        self.vmultc[self.mcon] = 0
+        return self.L60()
+
+    
+    def L490(self):
+        if (self.mcon == (self.cobyla.m - 1)):
+            return self.L480()
+        
+        self.cobyla.ifull = 0
+        return 0
+                
         
                 
             
