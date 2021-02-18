@@ -63,28 +63,37 @@ class Cobyla:
         np.array((*self.con, self.fval, self.resmax))
 
         
-    def calcfc(self):
+    def run(self):
+        self.L40()
+        self.L130()
+        self.L370()
+
+        
+    def L600(self):
+        self.x = self.optimal_vertex
+        self.fval = self.datmat[-1, -2]
+        self.resmax = self.datmat[-1, -1]
+        
+        
+    def _calcfc(self):
+        if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)):
+            # Error: COBYLA_USERABORT (rc = 1)
+            self.L600()
+            raise UserWarning('cobyla: maximum number of function evaluations reach')
+
         self.nfvals += 1
         try:
             self.fval = self.F(self.x)
         except Exception as e:
             # Error: COBYLA_USERABORT (rc = 3)
-            # GOTO L600
+            self.L600()
             raise UserWarning('cobyla: user requested end of minimitzation')
         
         self.con = np.array(tuple(constrain(self.x) in self.C))
         self.resmax = max((0, *(-self.con)))
         if self.ibranch == 1:
-            # GOTO L440
-            pass
-
-        if (self.iflag == 0):
-            self.ibrnch = 0
-            # GOTO L140
-        else:
-            pass
+            return self.L440()
         
-
         
     def _set_datmat_step(self, jdrop):
         f = datmat[-1, -2]
@@ -100,34 +109,26 @@ class Cobyla:
                 self.simi[row, jdrop] = -sum(self.simi[row, :(jdrop + 1)])
 
                 
-    def set_datmat(self):
-        self.calcfc()
+    def L40(self):
+        self._calcfc()
         self.datmat[-1,] = self.current_values
-        self._set_data,at_step(-1)
+        if (self.nfvals > (self.n + 1)):
+            return self.L130()
         
+        self._set_data,at_step(-1)
         for jdrop in range(self.n):
-            self.calcfc()
+            self._calcfc()
             self._set_data,at_step(jdrop)
             self.x[jdrop] += self.rho
+
             
-        
-    def cobylb(self):
-        if ((self.nfvals > 0) and (self.nfvals >= self.maxfun)):
-            # Error: COBYLA_MAXFUN (rc = 1)
-            # GOTO L600
-            raise UserWarning('cobyla: maximum number of function evaluation')
-
-        self.set_datmat()
-
+    def L130(self):
         self.ibrnch = 1
-        self.promote_best()
-        self.linear_coef()
-
-        self.acceptable_simplex()
+        self.L140()
         
         
-    def promote_best(self):
-        # L130, L140
+    def L140(self):
+        # Identify the optimal vertex of the current simplex
         nbest = self.n + 1
         phi = lambda fx, resmax: fx + (self.parmu * resmax)
         
@@ -142,6 +143,8 @@ class Cobyla:
                 cond = (temp == phimin) and (self.parmu == 0) and (resmax_j < resmax_best)
                 nbest = j if cond else nbest
 
+        # Switch the best vertex into pole position if it is not there already,
+        # and also update SIM, SIMI and DATMAT
         if (nbest <= self.n):
             self.datmat[[nbest, -1]] = self.datmat[[-1, nbest]]
             temp = np.array(self.sim[nbest])
@@ -150,13 +153,25 @@ class Cobyla:
             self.sim -= temp
             self.simi[nbest] = -self.simi.sum(axis=0)
 
-        error = (self.sim * self.simi).max()
+        # Make an error return if SIGI is a poor approximation to the inverse of
+        # the leading N by N submatrix of SIG
+        sim_simi = self.sim * self.simi
+        error = (sim_simi - np.eye(self.n)).max()
+        error = 0 if error < 0  else error
         if error > .1:
             # Error: COBYLA_MAXFUN (rc = 2)
+            self.L600()
             raise UserWarning('cobyla: rounding errors are becoming damaging')
 
+        self._linear_coef()
+        self._acceptable_simplex()
+
         
-    def linear_coef(self):
+    def _linear_coef(self):
+        # Calculate the coefficients of the linear approximations to the objective
+        # and constraint functions, placing minus the objective function gradient
+        # after the constraint gradients in the array A. The vector W is used for
+        # working space
         tcon = *con, fx = -self.datmat[-1, :-1]
         self.con = con
         self.fval = fx
@@ -166,7 +181,10 @@ class Cobyla:
         self.a[-1] *= -1
 
         
-    def acceptable_simplex(self):
+    def _acceptable_simplex(self):
+        # Calculate the values of sigma and eta, and set IFLAG=0 if the current
+        # simplex is not acceptable
+        self.iflag = 1
         self.parsig = self.alpha * rho
         pareta = self.beta * rho
         self.vsig = 1 / (sum(np.array(self.simi)**2, axis=0))**.5
@@ -176,7 +194,7 @@ class Cobyla:
         # If a new vertex is needed to improve acceptability, then decide which
         # vertex to drop from simplex
         if self.ibrnch == 1 or self.iflag == 1:
-            return
+            return self.L370()
 
         veta_max, jdrop = max(zip(self.veta, range(self.n)))
         vsig_max, jdrop = max(zip(self.vsig, range(self.n))) if pareta >= veta_max else self.vsig[jdrop], jdrop
@@ -205,10 +223,10 @@ class Cobyla:
         self.simi[..., jdrop] = target
         
         self.x = self.sim[-1] + self.dx
-        # GOTO 40
+        self.L40()
         
         
-    def _ajustments(self):
+    def L370(self):
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
         self.trstlp.run(self)
         if self.ifull == 0:
@@ -216,7 +234,7 @@ class Cobyla:
             cond = (temp < 0.25 * (self.rho ** 2)) 
             if cond:
                 self.ibrnch = 1
-                return # GOTO L550
+                return self.L550()
 
         # Predict the change to F and the new maximum constraint violation if the
         # variables are altered from x(0) to x(0)+DX
@@ -238,13 +256,11 @@ class Cobyla:
             phi = datmat[-1, -2] + (self.parmu * datmat[-1, -1])
             temp = datmat[..., -2] + (self.parmu * datmat[..., -1])
             if (temp < phi).any():
-                # GOTO L140
-                return
+                return self.L140()
             mask = (temp == phi)
             if mask.any() and (self.parmu == 0):
                 if datmat[-1][mask].flat[0] < datmat[-1, -1]:
-                    # GOTO L140
-                    return
+                    return self.L140()
                 
         self.prerem = (self.parmu * self.prerec) - ssum[-1]
 
@@ -252,11 +268,10 @@ class Cobyla:
         # actual reduction in the merit function
         self.x = self.self.optimal_vertex + self.dx
         self.ibrnch = 1
+        self.L40()
 
-        # GOTO L40
-        return
-
-    def replace_simplex_vertice(self):
+        
+    def L440(self):
         vmold = self.datmat[-1, -2] + (self.parmu * datmat[-1, -1])
         vmnew = self.fval + (self.parmu * self.resmax)
         trured = vmold - vmnew
@@ -295,9 +310,9 @@ class Cobyla:
         if lflag is not None:
             jdrop = lflag
         if jdrop == 0:
-            # GOTO L550
-            return
+            return self.L550()
 
+        # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         self.sim[jdrop] = self.dx
         self.dx * self.simi[..., jdrop]
         
@@ -312,11 +327,15 @@ class Cobyla:
 
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= prerem * 0.1):
-            # GOTO L140
-            return
+            return self.L140()
 
         
-    def reduce_rho_reset_parmu(self):
+    def L550(self):
+        if (self.iflag == 0):
+            self.ibrnch = 0
+            return self.L140()
+            
+        # Otherwise reduce RHO if it is not at its least value and reset PARMU
         if (self.rho > self.rhoend):
             self.rho = self.rhoend if (self.rho <= (self.rhoend * 1.5)) else (self.rho / 2)
             if parmu > 0:
@@ -408,8 +427,7 @@ class Trstlp:
         else:
             self.icount -= 1
             if self.icount == 0:
-                # GOTO L490
-                return
+                return self.L490()
 
         # If ICON exceeds NACT, then we add the constraint with index IACT(ICON) to
         # the active set. Apply Givens rotations so that the last N-NACT-1 columns
@@ -492,8 +510,7 @@ class Trstlp:
                 self.vmultd[k] = 0
 
         if (self.ratio < 0):
-            # GOTO L490
-            return
+            return self.L490()
 
         return self.revise_lagrange_multipliers_reorder_active_cons()
     
@@ -528,8 +545,7 @@ class Trstlp:
 
         temp = np.dot(self.z[self.nact], self.a[self.kk])
         if (temp == 0):
-            # GOTO L490
-            return
+            return self.L490()
         
         self.zdota[self.nact] = temp
         self.vmultc[self.icon] = 0
@@ -628,8 +644,7 @@ class Trstlp:
         ss = np.dot(self.sdirn, self.sdirn)
 
         if (dd <= 0):
-            # GOTO L490
-            return
+            return self.L490()
         
         temp = (ss * dd) ** 0.5
         if (abs(sd) >= (temp * 1e-6)):
@@ -641,12 +656,13 @@ class Trstlp:
             acca = self.step + (self.resmax * 0.1)
             accb = self.step + (self.resmax * 0.2)
             if ((self.step >= acca) or (acca >= accb)):
-                # GOTO L480
-                return
+                return self.L480()
+            
             self.step = min(self.step, self.resmax)
             
         self.set_dxnew()
 
+        
     def set_dxnew(self):
         # Set DXNEW to the new variables if STEP is the steplength, and reduce 
         # RESMAX to the corresponding maximum residual if stage one is being done.
