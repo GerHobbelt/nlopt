@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Cobyla:
-    def __init__(self, x, F, C, rhobeg=0, rhoend=1, maxfun=1000):
+    def __init__(self, x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
         n = len(x)
         m = len(C)
 
@@ -23,11 +23,11 @@ class Cobyla:
         self.resmax = 0
 
         # simplex
-        self.sim = self.rho * np.matrix(np.eye((n, n)))
+        self.sim = self.rho * np.matrix(np.eye(n))
         self.optimal_vertex = self.x.copy()
 
         # inverse simplex
-        self.simi = (1 / self.rho) * np.matrix(np.eye((n, n)))
+        self.simi = (1 / self.rho) * np.matrix(np.eye(n))
 
         # for each vertex, m constrains values, f, resmax
         # last one for the best vertex
@@ -60,25 +60,19 @@ class Cobyla:
 
     @property
     def current_values(self):
-        np.array((*self.con, self.fval, self.resmax))
+        return np.array((*self.con, self.fval, self.resmax))
 
         
     def run(self):
         self.L40()
         self.L130()
         self.L370()
-
-        
-    def L600(self):
-        self.x = self.optimal_vertex
-        self.fval = self.datmat[-1, -2]
-        self.resmax = self.datmat[-1, -1]
         
         
     def _calcfc(self):
         if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)):
             # Error: COBYLA_USERABORT (rc = 1)
-            self.L600()
+            self.L600_L620()
             raise UserWarning('cobyla: maximum number of function evaluations reach')
 
         self.nfvals += 1
@@ -86,12 +80,12 @@ class Cobyla:
             self.fval = self.F(self.x)
         except Exception as e:
             # Error: COBYLA_USERABORT (rc = 3)
-            self.L600()
+            self.L600_L620()
             raise UserWarning('cobyla: user requested end of minimitzation')
         
-        self.con = np.array(tuple(constrain(self.x) in self.C))
+        self.con = np.array(tuple(constrain(self.x) for constrain in self.C))
         self.resmax = max((0, *(-self.con)))
-        if self.ibranch == 1:
+        if self.ibrnch == 1:
             return self.L440()
         
         
@@ -112,7 +106,7 @@ class Cobyla:
     def L40(self):
         self._calcfc()
         self.datmat[-1,] = self.current_values
-        if (self.nfvals > (self.n + 1)):
+        if (self.nfvals > self.n):
             return self.L130()
         
         self._set_data,at_step(-1)
@@ -160,7 +154,7 @@ class Cobyla:
         error = 0 if error < 0  else error
         if error > .1:
             # Error: COBYLA_MAXFUN (rc = 2)
-            self.L600()
+            self.L600_L620()
             raise UserWarning('cobyla: rounding errors are becoming damaging')
 
         self._linear_coef()
@@ -228,7 +222,7 @@ class Cobyla:
         
     def L370(self):
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
-        self.trstlp.run(self)
+        Trstlp(self).run()
         if self.ifull == 0:
             temp = sum(self.dx ** 2)
             cond = (temp < 0.25 * (self.rho ** 2)) 
@@ -356,7 +350,7 @@ class Cobyla:
                 self.parmu = (cmax - cmin) / denom
 
                 
-    def best_calculated_values(self):
+    def L600_L620(self):
         # Return the best calculated values of the variables
         if (self.ifull != 1):
             # L600
@@ -402,6 +396,9 @@ class Trstlp:
         self.cobyla.ifull = 1
         self.cobyla.dx = np.zeros(self.cobyla.n)
 
+
+    def run(self):
+        self.L60()
         
     def L60(self):
         # End the current stage of the calculation if 3 consecutive iterations
@@ -462,7 +459,7 @@ class Trstlp:
                 self.z[k] = (alpha * self.z[k]) + (beta * self.z[k + 1])
                 self.z[k + 1] = alpha * self.z[k + 1]
                 
-        return self.add_new_constrain()
+        self.add_new_constrain()
 
 
     def add_new_constrain(self):
@@ -512,7 +509,7 @@ class Trstlp:
         if (self.ratio < 0):
             return self.L490()
 
-        return self.revise_lagrange_multipliers_reorder_active_cons()
+        self.revise_lagrange_multipliers_reorder_active_cons()
     
 
     def revise_lagrange_multipliers_reorder_active_cons(self):
@@ -551,7 +548,7 @@ class Trstlp:
         self.vmultc[self.icon] = 0
         self.vmultc[self.nact] = ratio
 
-        return self.L210()
+        self.L210()
 
         
     def L210(self):
@@ -587,7 +584,7 @@ class Trstlp:
         temp = (np.dot(self.sdirn, self.cobyla.a[self.kk]) - 1) / self.zdota[self.nact]
         self.sdirn -= (temp * self.z[self.nact])
         
-        return self.L340()
+        self.L340()
 
 
     def L260(self):
@@ -623,7 +620,8 @@ class Trstlp:
 
         temp = np.dot(self.sdirn, self.z[self.nact + 1])
         self.sdirn -= temp * self.z[self.nact + 1]
-        return self.L340()
+        
+        self.L340()
 
 
     def L320(self):
@@ -741,6 +739,8 @@ class Trstlp:
         if (self.step == self.stpful):
             return 0
 
+        self.L480()
+
         
     def L480(self):
         self.mcon = self.cobyla.m
@@ -756,8 +756,6 @@ class Trstlp:
         
         self.cobyla.ifull = 0
         return 0
-                
-        
                 
             
         
