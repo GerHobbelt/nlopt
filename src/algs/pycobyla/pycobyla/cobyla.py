@@ -15,7 +15,6 @@ class Cobyla:
         self.rhoend = rhoend
         self.rho = self.rhobeg
         self.maxfun = maxfun
-        self.state = 0
         
         # mpp (m constrains, fval, resmax)
         self.con = None # m constrains values
@@ -57,13 +56,15 @@ class Cobyla:
         self.nfvals = 0
         self.prerec = None
         self.prerem = None
+        self.jdrop = None
 
     @property
     def current_values(self):
-        return np.array((*self.con, self.fval, self.resmax))
+        return np.array((*self.con, self.fval, self.resmax), dtype=np.float)
 
         
     def run(self):
+        breakpoint()
         self.L40()
         self.L130()
         self.L370()
@@ -83,24 +84,25 @@ class Cobyla:
             self.L600_L620()
             raise UserWarning('cobyla: user requested end of minimitzation')
         
-        self.con = np.array(tuple(constrain(self.x) for constrain in self.C))
+        self.con = np.array(tuple(constrain(self.x) for constrain in self.C), dtype=np.float)
         self.resmax = max((0, *(-self.con)))
         if self.ibrnch == 1:
             return self.L440()
         
         
     def _set_datmat_step(self, jdrop):
-        f = datmat[-1, -2]
-        if f <= self.fval:
-            self.x[jdrop] = self.optimal_vertex[jdrop]
-        else:
-            self.optimal_vertex[jdrop] = self.x[jdrop]
-            self.datmat[jdrop] = self.datmat[-1]
-            self.datmat[-1,] = self.current_values
+        f = self.datmat[-1, -2]
+        if jdrop < self.n:
+            if f <= self.fval:
+                self.x[jdrop] = self.optimal_vertex[jdrop]
+            else:
+                self.optimal_vertex[jdrop] = self.x[jdrop]
+                self.datmat[jdrop] = self.datmat[-1]
+                self.datmat[-1,] = self.current_values
 
-            self.sim[:(jdrop + 1), jdrop] -= self.rho
-            for row in range(jdrop + 1):
-                self.simi[row, jdrop] = -sum(self.simi[row, :(jdrop + 1)])
+                self.sim[:(jdrop + 1), jdrop] -= self.rho
+                for row in range(jdrop + 1):
+                    self.simi[row, jdrop] = -sum(self.simi[row, :(jdrop + 1)])
 
                 
     def L40(self):
@@ -108,12 +110,12 @@ class Cobyla:
         self.datmat[-1,] = self.current_values
         if (self.nfvals > self.n):
             return self.L130()
-        
-        self._set_data,at_step(-1)
-        for jdrop in range(self.n):
+
+        for self.jdrop in range(self.n):
+            self.x[self.jdrop] += self.rho
             self._calcfc()
-            self._set_data,at_step(jdrop)
-            self.x[jdrop] += self.rho
+            self.datmat[self.jdrop,] = self.current_values
+            self._set_datmat_step(self.jdrop)
 
             
     def L130(self):
@@ -190,12 +192,12 @@ class Cobyla:
         if self.ibrnch == 1 or self.iflag == 1:
             return self.L370()
 
-        veta_max, jdrop = max(zip(self.veta, range(self.n)))
-        vsig_max, jdrop = max(zip(self.vsig, range(self.n))) if pareta >= veta_max else self.vsig[jdrop], jdrop
+        veta_max, self.jdrop = max(zip(self.veta, range(self.n)))
+        vsig_max, self.jdrop = max(zip(self.vsig, range(self.n))) if pareta >= veta_max else self.vsig[self.jdrop], self.jdrop
 
         # Calculate the step to the new vertex and its sign
         temp = gamma * rho * vsig_max
-        self.dx = temp * self.simi[..., jdrop]
+        self.dx = temp * self.simi[..., self.jdrop]
 
         ssum = np.array(np.dot(a, dx)).ravel()
         temp = self.datmat[-1, :-1]
@@ -208,13 +210,13 @@ class Cobyla:
 
         # Update the elements of SIM and SIMI, and set the next X
         self.dx *= dxsign
-        self.sim[jdrop] = self.dx
-        self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], self.dx)
+        self.sim[self.jdrop] = self.dx
+        self.simi[..., self.jdrop] /= np.dot(self.simi[..., self.jdrop], self.dx)
 
         pdot = np.dot(dx, simi)
-        target = self.simi[..., jdrop]
+        target = self.simi[..., self.jdrop]
         self.simi -= np.multiply(pdot, self.simi)
-        self.simi[..., jdrop] = target
+        self.simi[..., self.jdrop] = target
         
         self.x = self.sim[-1] + self.dx
         self.L40()
@@ -279,11 +281,11 @@ class Cobyla:
         # replaced
         
         self.ratio = 1 if (trured <= 0) else 0
-        jdrop = 0
+        self.jdrop = 0
         temp = abs(np.array(self.dx * self.simi))
         mask = (temp > ratio)
         if mask.any():
-            jdrop = np.arange(self.n)[mask].flat[-1]
+            self.jdrop = np.arange(self.n)[mask].flat[-1]
             
         sigbar = temp * self.vsig
 
@@ -302,22 +304,22 @@ class Cobyla:
                     edgmax = temp
                     
         if lflag is not None:
-            jdrop = lflag
-        if jdrop == 0:
+            self.jdrop = lflag
+        if self.jdrop == 0:
             return self.L550()
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
-        self.sim[jdrop] = self.dx
-        self.dx * self.simi[..., jdrop]
+        self.sim[self.jdrop] = self.dx
+        self.dx * self.simi[..., self.jdrop]
         
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         temp = (self.dx * self.simi[...,0]).flat[0]
-        self.simi[..., jdrop] /= temp
-        target = self.simi[..., jdrop]
+        self.simi[..., self.jdrop] /= temp
+        target = self.simi[..., self.jdrop]
         temp = self.dx * self.simi
         self.simi -= np.repeat(np.array(target), len(temp)).reshape(self.simi.shape) * temp
-        self.simi[..., jdrop] = target
-        self.datmat[..., jdrop] = np.array((*self.con, self.fval, self.resmax))
+        self.simi[..., self.jdrop] = target
+        self.datmat[..., self.jdrop] = np.array((*self.con, self.fval, self.resmax))
 
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= prerem * 0.1):
