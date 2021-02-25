@@ -41,7 +41,7 @@ class Cobyla:
 
         # flags
         self.ibrnch = 0
-        self.iflag = 0
+        self.iflag = 0 # Simplex acceptable simplex
         self.ifull = None
 
         # Params
@@ -178,7 +178,7 @@ class Cobyla:
         return not(np.any(self.vsig < self.parsig) or np.any(self.veta > pareta))
 
     
-    def _new_vertex_improv_acceptability(self, pareta):
+    def _new_vertex_improve_acceptability(self, pareta):
         veta_max, self.jdrop = max(zip(self.veta, range(self.n)))
         vsig_max, self.jdrop = max(zip(self.vsig, range(self.n))) if pareta >= veta_max else self.vsig[self.jdrop], self.jdrop
 
@@ -221,7 +221,7 @@ class Cobyla:
             if self.ibrnch == 1 or self.iflag == 1:
                 return
 
-            self._new_vertex_improv_acceptability(pareta)
+            self._new_vertex_improve_acceptability(pareta)
             self._calcfc_iteration()
             self.ibrnch = 1
 
@@ -238,7 +238,7 @@ class Cobyla:
         if self.ibrnch == 1 or self.iflag == 1:
             return
 
-        self._new_vertex_improv_acceptability(pareta)
+        self._new_vertex_improve_acceptability(pareta)
         self._calcfc_iteration()
         self.ibrnch = 1
 
@@ -403,9 +403,9 @@ class Trstlp:
         
         self.icount = 0
         self.optold = 0
-        self.nact = 0
-        self.nactx = 0
-        self.icon = None
+        self.nact = -1
+        self.nactx = -1
+        self.icon = self.mcon
         self.sp = None
         self.spabs = None
         self.tot = None
@@ -415,34 +415,30 @@ class Trstlp:
         self.stpful = None
         self.step = None
         
-        self.sdirn = None # m + 1
+        self.sdirn = np.zeros(self.cobyla.n)
         self.dxnew = None # n
-        self.vmultd = None # n
-        
-        self.resmax, self.icon = max(zip((0, *cobyla.con), (None, range(self.cobyla.m))))
+
+        self.resmax, self.icon = max(zip((0, *self.cobyla.con), (None, *range(self.cobyla.m))))
         self.iact = np.arange(self.cobyla.m + 1)
-        self.vmultc = resmax - self.cobyla.con
+        self.vmultc = np.array((*(self.resmax - self.cobyla.con), 0), dtype=np.float)
+        self.vmultd = np.zeros(self.cobyla.m + 1) 
 
         self.cobyla.ifull = 1
         self.cobyla.dx = np.zeros(self.cobyla.n)
 
 
     def run(self):
-        self.L60()
-        
-    def L60(self):
         # End the current stage of the calculation if 3 consecutive iterations
         # have either failed to reduce the best calculated value of the objective
         # function or to increase the number of active constraints since the best
         # value was calculated. This strategy prevents cycling, but there is a
         # remote possibility that it will cause premature termination
-        self.optold = 0
-        self.icount = 0
-        self.L70()
+        self.L70()        
 
         
     def L70(self):
-        optnew = resmax if (mcon == self.cobyla.m) else -np.dot(self.dx, self.a[-1])
+        breakpoint()
+        optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.dx, self.a[-1])
 
         if (self.icount == 0) or (optnew < self.optold):
             self.optold = optnew
@@ -464,11 +460,11 @@ class Trstlp:
         if (self.icon <= self.nact):
             return self.L260()
 
-        self.kk = self.iact[self.icon] # TODO: Warning this. Try to remove! 
+        self.kk = self.iact[self.icon]
         self.dxnew = self.a[kk]
         self.tot = 0
 
-        for k in range(self.cobyla.n - 1, 0, -1):
+        for k in range(self.cobyla.n - 1, -1, -1):
             if k > self.nact:
                 temp = self.z[k] * self.dxnew
                 self.sp = sum(temp)
@@ -487,7 +483,7 @@ class Trstlp:
                 beta = self.tot / temp
                 self.tot = temp
                 self.z[k] = (alpha * self.z[k]) + (beta * self.z[k + 1])
-                self.z[k + 1] = alpha * self.z[k + 1]
+                self.z[k + 1] = alpha * self.z[k + 1] - (beta * self.z[k])
                 
         self.add_new_constrain()
 
@@ -725,13 +721,13 @@ class Trstlp:
                 kk = self.iact[k]
                 self.dxnew -= self.vmultd[k] * self.cobyla.a[kk]
 
-        if (self.mcon >= self.cobyla.m):
+        if (self.mcon > self.cobyla.m):
             self.vmultd[self.nact] = max(0, self.vmultd[self.nact])
                         
         # Complete VMULTC by finding the new constraint residuals
         self.dxnew = self.cobyla.dx + (self.step * self.sdirn)
         if (self.mcon > self.nact):
-            for k in range(self.nact+1, self.mcon+1):
+            for k in range(self.nact, self.mcon):
                 kk = self.iact[k]
                 temp = np.dot(self.cobyla.a[kk], self.dxnew)
                 ssum = self.resmax - self.cobyla.con[kk] + temp
@@ -745,7 +741,7 @@ class Trstlp:
         # Calculate the fraction of the step from DX to DXNEW that will be taken
         self.ratio = 1
         self.icon = None
-        for k in range(0, self.mcon + 1):
+        for k in range(self.mcon):
             if self.vmultd[k] < 0:
                 temp = self.vmultc[k] / (self.vmultc[k] - vmultd)
                 if (temp < self.ratio):
@@ -758,7 +754,7 @@ class Trstlp:
         self.vmultc = (temp * self.vmultc) + (ratio * self.vmultd)
         self.vmultc *= (self.vmultc > 0)
 
-        if (self.mcon == (self.cobyla.m -1)):
+        if (self.mcon == self.cobyla.m):
             self.resmax = resold + (self.ratio * (self.resmax - resold))
         
         # If the full step is not acceptable then begin another iteration.
@@ -773,15 +769,14 @@ class Trstlp:
 
         
     def L480(self):
-        self.mcon = self.cobyla.m
-        self.icon = self.mcon
-        self.iact[self.mcon] = self.mcon
-        self.vmultc[self.mcon] = 0
+        self.mcon = self.cobyla.m + 1
+        self.icon = self.iact[-1] = self.cobyla.m
+        self.vmultc[-1] = 0
         return self.L60()
 
     
     def L490(self):
-        if (self.mcon == (self.cobyla.m - 1)):
+        if (self.mcon == self.cobyla.m):
             return self.L480()
         
         self.cobyla.ifull = 0
