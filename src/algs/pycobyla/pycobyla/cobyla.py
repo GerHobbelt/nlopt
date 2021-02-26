@@ -394,6 +394,11 @@ class Cobyla:
         
 
 class Trstlp:
+    FINISH = 0
+    KEEP_STAGE = 1
+    CHANGE_STAGE = 2
+    
+    
     def __init__(self, cobyla: Cobyla):
         self.cobyla = cobyla
         
@@ -405,7 +410,6 @@ class Trstlp:
         self.optold = 0
         self.nact = -1
         self.nactx = -1
-        self.icon = self.mcon
         self.sp = None
         self.spabs = None
         self.tot = None
@@ -414,12 +418,11 @@ class Trstlp:
         self.kk = None
         self.stpful = None
         self.step = None
+        self.dxnew = None # n
         
         self.sdirn = np.zeros(self.cobyla.n)
-        self.dxnew = None # n
-
-        self.resmax, self.icon = max(zip((0, *self.cobyla.con), (None, *range(self.cobyla.m))))
-        self.iact = np.arange(self.cobyla.m + 1)
+        self.resmax, self.icon = max(zip((0, *self.cobyla.con), (-1, *range(self.cobyla.m))))
+        self.iact = np.arange(self.cobyla.m)
         self.vmultc = np.array((*(self.resmax - self.cobyla.con), 0), dtype=np.float)
         self.vmultd = np.zeros(self.cobyla.m + 1) 
 
@@ -433,11 +436,19 @@ class Trstlp:
         # function or to increase the number of active constraints since the best
         # value was calculated. This strategy prevents cycling, but there is a
         # remote possibility that it will cause premature termination
-        self.L70()        
+        while True:
+            stage = self.L70()
+            if stage != self.KEEP_STAGE:
+                break
+
+        while True:
+            if stage == self.FINISH:
+                return
+            
+            stage = self.L70()
 
         
     def L70(self):
-        breakpoint()
         optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.dx, self.a[-1])
 
         if (self.icount == 0) or (optnew < self.optold):
@@ -450,7 +461,7 @@ class Trstlp:
         else:
             self.icount -= 1
             if self.icount == 0:
-                return self.L490()
+                return self.L490_termination_chance()
 
         # If ICON exceeds NACT, then we add the constraint with index IACT(ICON) to
         # the active set. Apply Givens rotations so that the last N-NACT-1 columns
@@ -461,7 +472,7 @@ class Trstlp:
             return self.L260()
 
         self.kk = self.iact[self.icon]
-        self.dxnew = self.a[kk]
+        self.dxnew = np.array(self.cobyla.a[self.kk]).ravel()
         self.tot = 0
 
         for k in range(self.cobyla.n - 1, -1, -1):
@@ -474,16 +485,17 @@ class Trstlp:
                 accb = self.spabs + (0.2 * abs(self.sp))
                 
                 cond = ((self.spabs >= acca) or (acca >= accb))
-                self.sp = 0 if cond else self.sp 
-                self.tot = self.sp if (self.tot == 0) else self.tot
-                
-            else:
-                temp = ((self.sp ** 2) + (self.tot ** 2)) ** 0.5
-                alpha = self.sp / temp
-                beta = self.tot / temp
-                self.tot = temp
-                self.z[k] = (alpha * self.z[k]) + (beta * self.z[k + 1])
-                self.z[k + 1] = alpha * self.z[k + 1] - (beta * self.z[k])
+                self.sp = 0 if cond else self.sp
+                if self.tot == 0:
+                    self.tot = self.sp 
+                else:
+                    temp = ((self.sp ** 2) + (self.tot ** 2)) ** 0.5
+                    alpha = self.sp / temp
+                    beta = self.tot / temp
+                    self.tot = temp
+                    self.z[k], self.z[k + 1] = \
+                        (alpha * self.z[k]) + (beta * self.z[k + 1]), \
+                        (alpha * self.z[k + 1]) - (beta * self.z[k])
                 
         self.add_new_constrain()
 
@@ -492,6 +504,7 @@ class Trstlp:
         # Add the new constraint if this can be done without a deletion from the
         # active set
 
+        breakpoint()
         if (self.tot != 0):
             self.nact += 1
             self.zdota[self.nact] = self.tot
@@ -533,7 +546,7 @@ class Trstlp:
                 self.vmultd[k] = 0
 
         if (self.ratio < 0):
-            return self.L490()
+            return self.L490_termination_chance()
 
         self.revise_lagrange_multipliers_reorder_active_cons()
     
@@ -568,7 +581,7 @@ class Trstlp:
 
         temp = np.dot(self.z[self.nact], self.a[self.kk])
         if (temp == 0):
-            return self.L490()
+            return self.L490_termination_chance()
         
         self.zdota[self.nact] = temp
         self.vmultc[self.icon] = 0
@@ -583,7 +596,7 @@ class Trstlp:
         
         self.iact[self.icon] = self.iact[self.nact]
         self.iact[self.nact] = self.kk
-        if ((self.mcom > self.cobyla.m) and (self.kk != self.mcon)):
+        if ((self.mcom > self.cobyla.m) and (self.kk != (self.mcon - 1))):
             k = self.nact - 1
             sp = np.dot(self.z[k], self.cobyla.a[kk])
             temp = ((sp ** 2) + (self.zdota[self.nact] ** 2)) ** 0.5
@@ -603,7 +616,7 @@ class Trstlp:
         # If stage one is in progress, then set SDIRN to the direction of the next 
         # change to the current vector of variables
 
-        if (self.mcon > self.cobyla.m):
+        if (self.mcon > self.cobyla.m): # mcon == (m + 1)
             return self.L320()
 
         self.kk = self.iact[self.nact]
@@ -668,7 +681,7 @@ class Trstlp:
         ss = np.dot(self.sdirn, self.sdirn)
 
         if (dd <= 0):
-            return self.L490()
+            return self.L490_termination_chance()
         
         temp = (ss * dd) ** 0.5
         if (abs(sd) >= (temp * 1e-6)):
@@ -680,7 +693,7 @@ class Trstlp:
             acca = self.step + (self.resmax * 0.1)
             accb = self.step + (self.resmax * 0.2)
             if ((self.step >= acca) or (acca >= accb)):
-                return self.L480()
+                return self.L480_stage_ending()
             
             self.step = min(self.step, self.resmax)
             
@@ -726,7 +739,7 @@ class Trstlp:
                         
         # Complete VMULTC by finding the new constraint residuals
         self.dxnew = self.cobyla.dx + (self.step * self.sdirn)
-        if (self.mcon > self.nact):
+        if ((self.mcon - 1) > self.nact):
             for k in range(self.nact, self.mcon):
                 kk = self.iact[k]
                 temp = np.dot(self.cobyla.a[kk], self.dxnew)
@@ -759,37 +772,27 @@ class Trstlp:
         
         # If the full step is not acceptable then begin another iteration.
         # Otherwise switch to stage two or end the calculation
-        if (self.icon is not None):
-            return self.L70()
+        if (self.icon > -1):
+            return self.KEEP_STAGE
 
         if (self.step == self.stpful):
-            return 0
+            return self.FINISH
 
-        self.L480()
+        self.L480_stage_ending()
 
-        
-    def L480(self):
+
+    def L480_stage_ending(self):
         self.mcon = self.cobyla.m + 1
         self.icon = self.iact[-1] = self.cobyla.m
         self.vmultc[-1] = 0
-        return self.L60()
+        # L60
+        self.icount = self.optold = 0
+        return self.CHANGE_STAGE
 
-    
-    def L490(self):
+
+    def L490_termination_chance(self):
         if (self.mcon == self.cobyla.m):
-            return self.L480()
+            return self.L480_stage_ending()
         
         self.cobyla.ifull = 0
-        return 0
-                
-            
-        
-        
-                
-            
-        
-        
-
-        
-            
-            
+        return self.FINISH
