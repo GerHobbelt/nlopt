@@ -1,7 +1,16 @@
+import typing
+
 import numpy as np
 
 
-class Cobyla:
+class BasicTools:
+    
+    @classmethod
+    def flatten(cls, mt, dtype=np.float) -> np.array:
+        return np.array(mt, dtype=dtype).ravel()
+    
+
+class Cobyla(BasicTools):
     def __init__(self, x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
         n = len(x)
         m = len(C)
@@ -173,8 +182,8 @@ class Cobyla:
         # Calculate the values of sigma and eta, and set IFLAG=0 if the current
         # simplex is not acceptable
         self.parsig = self.alpha * self.rho
-        self.vsig = (np.array((1 / (self.simi ** 2).sum(axis=0))) ** .5).ravel()
-        self.veta = (np.array((self.sim ** 2).sum(axis=1)) ** .5).ravel()
+        self.vsig = self.flatten((self.simi ** 2).sum(axis=0)) **.5
+        self.veta = self.flatten((self.sim ** 2).sum(axis=1)) ** .5
         return not(np.any(self.vsig < self.parsig) or np.any(self.veta > pareta))
 
     
@@ -186,7 +195,7 @@ class Cobyla:
         temp = gamma * rho * vsig_max
         self.dx = temp * self.simi[..., self.jdrop]
 
-        ssum = np.array(np.dot(self.a, self.dx)).ravel()
+        ssum = self.flatten(np.dot(self.a, self.dx))
         temp = self.datmat[-1, :-1]
 
         cvmaxp = max((0, *(-ssum[:-1] -temp)))
@@ -251,7 +260,7 @@ class Cobyla:
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
         trstlp = Trstlp(self)
         trstlp.run()
-        
+
         if self.ifull == 0:
             temp = sum(self.dx ** 2)
             cond = (temp < 0.25 * (self.rho ** 2)) 
@@ -261,9 +270,10 @@ class Cobyla:
 
         # Predict the change to F and the new maximum constraint violation if the
         # variables are altered from x(0) to x(0)+DX
-        self.con[-2] = 0
-        ssum = self.con[:-1] - (self.a * self.dx).T.flat
-        resnew = max((0, *ssum[:-1]))
+        self.fval = 0
+        temp = (np.array(self.a) * self.dx).sum(axis=1)
+        csum, fsum = self.con - temp[:-1], self.fval - temp[-1]
+        resnew = max((0, *csum))
 
         # Increase PARMU if necessary and branch back if this change alters the
         # optimal vertex. Otherwise PREREM and PREREC will be set to the predicted 
@@ -272,8 +282,9 @@ class Cobyla:
         barmu = 0
         self.prerec = self.datmat[-1, -1] - resnew
         if self.prerec > 0 :
-            barmu = ssum[-1] / self.prerec
+            barmu = fsum / self.prerec
 
+        breakpoint()
         if self.parmu < (barmu * 1.5):
             self.parmu = barmu * 2
             phi = datmat[-1, -2] + (self.parmu * datmat[-1, -1])
@@ -285,7 +296,7 @@ class Cobyla:
                 if datmat[-1][mask].flat[0] < datmat[-1, -1]:
                     return self.L140()
                 
-        self.prerem = (self.parmu * self.prerec) - ssum[-1]
+        self.prerem = (self.parmu * self.prerec) - fsum[-1]
 
         # Calculate the constraint and objective functions at x(*). Then find the 
         # actual reduction in the merit function
@@ -393,7 +404,7 @@ class Cobyla:
         return
         
 
-class Trstlp:
+class Trstlp(BasicTools):
     FINISH = 0
     KEEP_STAGE = 1
     CHANGE_STAGE = 2
@@ -413,16 +424,15 @@ class Trstlp:
         self.sp = None
         self.spabs = None
         self.tot = None
-        self.ratio = None
-        self.iout = None # To drop?
-        self.kk = None
+        self.iout = None # TODO To drop?
         self.stpful = None
         self.step = None
         self.dxnew = None # n
         
         self.sdirn = np.zeros(self.cobyla.n)
         self.resmax, self.icon = max(zip((0, *self.cobyla.con), (-1, *range(self.cobyla.m))))
-        self.iact = np.arange(self.cobyla.m)
+        self.iact = np.arange(self.cobyla.m + 1)
+        self.iact[-1] = -1
         self.vmultc = np.array((*(self.resmax - self.cobyla.con), 0), dtype=np.float)
         self.vmultd = np.zeros(self.cobyla.m + 1) 
 
@@ -441,16 +451,13 @@ class Trstlp:
             if stage != self.KEEP_STAGE:
                 break
 
-        while True:
-            if stage == self.FINISH:
-                return
-            
+        while stage != self.FINISH:
             stage = self.L70()
 
         
     def L70(self):
-        optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.dx, self.a[-1])
-
+        optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.cobyla.dx, self.flatten(self.cobyla.a[-1]))
+            
         if (self.icount == 0) or (optnew < self.optold):
             self.optold = optnew
             self.nactx = self.nact
@@ -471,8 +478,8 @@ class Trstlp:
         if (self.icon <= self.nact):
             return self.L260()
 
-        self.kk = self.iact[self.icon]
-        self.dxnew = np.array(self.cobyla.a[self.kk]).ravel()
+        kk = self.iact[self.icon]
+        self.dxnew = self.flatten(self.cobyla.a[kk])
         self.tot = 0
 
         for k in range(self.cobyla.n - 1, -1, -1):
@@ -497,33 +504,31 @@ class Trstlp:
                         (alpha * self.z[k]) + (beta * self.z[k + 1]), \
                         (alpha * self.z[k + 1]) - (beta * self.z[k])
                 
-        self.add_new_constrain()
-
-
-    def add_new_constrain(self):
         # Add the new constraint if this can be done without a deletion from the
         # active set
 
-        breakpoint()
         if (self.tot != 0):
             self.nact += 1
             self.zdota[self.nact] = self.tot
             self.vmultc[self.icon] = self.vmultc[self.nact]
             self.vmultc[self.nact] = 0
-            return self.L210()
+            return self.L210(kk)
 
-        return self.constant_gradient(self.nact)
+        if (ratio := self.constant_gradient()) < 0:
+            return self.L490_termination_chance()
 
-    def constant_gradient(self, kmax):
+        return self.revise_lagrange_multipliers_reorder_active_cons(kk, ratio)
+    
+
+    def constant_gradient(self):
         # The next instruction is reached if a deletion has to be made from the
         # active set in order to make room for the new active constraint, because
         # the new constraint gradient is a linear combination of the gradients of 
         # the old active constraints. Set the elements of VMULTD to the multipliers
         # of the linear combination. Further, set IOUT to the index of the
         # constraint to be deleted, but branch if no suitable index can be found
-        self.ratio = -1
-        
-        for k in range(kmax, 0, -1):
+        ratio = -1
+        for k in range(self.nact, -1, -1):
             temp = self.z[k] * self.dxnew
             zdotv = sum(temp)
             zdvabs = sum(abs(temp))
@@ -534,29 +539,27 @@ class Trstlp:
                 temp = zdotv / self.zdota[k]
                 if ((temp > 0) and (self.iact[k] <= self.cobyla.m)):
                     tempa = self.vmultc[self.nact] / temp
-                    if (self.ratio < 0) or (tempa < self.ratio):
-                        self.ratio = tempa
-                        self.iout = k
+                    if (ratio < 0) or (tempa < ratio):
+                        ratio = tempa
+                        self.iout = k # TODO: Drop this ???
 
-                if (self.nact >= 2):
+                if (k >= 1):
                     self.dxnew -= (temp * self.cobyla.a[self.iact[k]])
 
                 self.vmultd[k] = temp
             else:
                 self.vmultd[k] = 0
-
-        if (self.ratio < 0):
-            return self.L490_termination_chance()
-
-        self.revise_lagrange_multipliers_reorder_active_cons()
+        
+        return ratio
     
 
-    def revise_lagrange_multipliers_reorder_active_cons(self):
+    def revise_lagrange_multipliers_reorder_active_cons(self, kk, ratio):
         # Revise the Lagrange multipliers and reorder the active constraints so
         # that the one to be replaced is at the end of the list. Also calculate the
         # new value of ZDOTA(NACT) and branch if it is not acceptable
-        temp = self.vmultc[:(self.nact + 1)] - (self.ratio * self.vmultd[:(self.nact + 1)])
-        self.vmultc[:(self.nact + 1)] = ((temp > 0 ) * temp)
+        k = self.nact + 1
+        temp = self.vmultc[:k] - (ratio * self.vmultd[:k])
+        self.vmultc[:k] = ((temp > 0 ) * temp)
 
         if (self.icon < self.nact):
             isave = self.iact[self.icon]
@@ -579,7 +582,7 @@ class Trstlp:
             self.iact[k] = isave
             self.vmultc[k] = vsave
 
-        temp = np.dot(self.z[self.nact], self.a[self.kk])
+        temp = np.dot(self.z[self.nact], self.flatten(self.cobyla.a[kk]))
         if (temp == 0):
             return self.L490_termination_chance()
         
@@ -587,16 +590,16 @@ class Trstlp:
         self.vmultc[self.icon] = 0
         self.vmultc[self.nact] = ratio
 
-        self.L210()
+        return self.L210(kk)
 
         
-    def L210(self):
+    def L210(self, kk):
         # Update IACT and ensure that the objective function continues to be
         # treated as the last active constraint when MCON>M
         
         self.iact[self.icon] = self.iact[self.nact]
-        self.iact[self.nact] = self.kk
-        if ((self.mcom > self.cobyla.m) and (self.kk != (self.mcon - 1))):
+        self.iact[self.nact] = kk
+        if ((self.mcon > self.cobyla.m) and (kk != (self.mcon - 1))):
             k = self.nact - 1
             sp = np.dot(self.z[k], self.cobyla.a[kk])
             temp = ((sp ** 2) + (self.zdota[self.nact] ** 2)) ** 0.5
@@ -610,20 +613,20 @@ class Trstlp:
             self.z[k] = temp
             
             self.iact[self.nact] = self.iact[k]
-            self.iact[k] = self.kk
+            self.iact[k] = kk
             self.vmultc[k], self.vmultc[self.nact] = self.vmultc[self.nact], self.vmultc[k]
 
         # If stage one is in progress, then set SDIRN to the direction of the next 
         # change to the current vector of variables
-
         if (self.mcon > self.cobyla.m): # mcon == (m + 1)
             return self.L320()
 
-        self.kk = self.iact[self.nact]
-        temp = (np.dot(self.sdirn, self.cobyla.a[self.kk]) - 1) / self.zdota[self.nact]
+        kk = self.iact[self.nact]
+        row = self.flatten(self.cobyla.a[kk])
+        temp = (np.dot(self.sdirn, row) - 1) / self.zdota[self.nact]
         self.sdirn -= (temp * self.z[self.nact])
         
-        self.L340()
+        return self.L340()
 
 
     def L260(self):
@@ -633,7 +636,7 @@ class Trstlp:
             vsave = self.vmultc[self.icon]
             for k in range(self.icon, self.nact + 1):
                 kp = k + 1
-                self.kk = self.iact[kp]
+                kk = self.iact[kp]
                 
                 sp = np.dot(self.z[k], self.a[kk])
                 temp = ((sp ** 2) + (self.zdota[kp] ** 2)) ** 0.5
@@ -644,7 +647,7 @@ class Trstlp:
                 temp = ((alpha * self.z[kp]) + (beta * self.z[k]))
                 self.z[kp] = ((alpha * self.z[k]) - (beta * self.z[kp]))
                 self.z[k] = temp
-                self.iact[k] = self.kk
+                self.iact[k] = kk
                 self.vmultc[k] = self.vmultc[kp]
                 
             self.iact[self.nact] = isave
@@ -660,12 +663,12 @@ class Trstlp:
         temp = np.dot(self.sdirn, self.z[self.nact + 1])
         self.sdirn -= temp * self.z[self.nact + 1]
         
-        self.L340()
+        return self.L340()
 
 
     def L320(self):
         self.sdirn = self.z[self.nact] / self.zdota[self.nact]
-        self.L340()
+        return self.L340()
 
         
     def L340(self):
@@ -687,8 +690,7 @@ class Trstlp:
         if (abs(sd) >= (temp * 1e-6)):
             temp = ((ss * dd) + (sd ** 2)) ** 0.5
             
-        self.stpful = dd / (temp + sd)
-        self.step = self.stpful
+        self.step = self.stpful = dd / (temp + sd)
         if(self.mcon == self.cobyla.m):
             acca = self.step + (self.resmax * 0.1)
             accb = self.step + (self.resmax * 0.2)
@@ -697,7 +699,7 @@ class Trstlp:
             
             self.step = min(self.step, self.resmax)
             
-        self.set_dxnew()
+        return self.set_dxnew()
 
         
     def set_dxnew(self):
@@ -705,7 +707,7 @@ class Trstlp:
         # RESMAX to the corresponding maximum residual if stage one is being done.
         # Because DXNEW will be changed during the calculation of some Lagrange
         # multipliers, it will be restored to the following value later
-        
+
         self.dxnew = self.cobyla.dx + (self.step * self.sdirn)
         
         if (self.mcon == self.cobyla.m):
@@ -713,26 +715,25 @@ class Trstlp:
             for k in range(0, self.nact + 1):
                 kk = self.iact[k]
                 temp = self.cobyla.con[kk] - np.dot(self.cobyla.a[kk], self.dxnew)
-                self.resmax = max(self.resmax, temp)
+                self.resmax = max(self.resmax, *self.flatten(temp))
                 
         # Set VMULTD to the VMULTC vector that would occur if DX became DXNEW. A
         # device is included to force VMULTD(K)=0.0 if deviations from this value
         # can be attributed to computer rounding errors. First calculate the new
         # Lagrange multipliers.
-        for k in range(self.nact, 0, -1):
-            temp = (self.z[k] * self.dxnew)
-            zdotw = sum(temp)
-            zdwabs = sum(abs(temp))
+        k = self.nact
+        temp = (self.z[k] * self.dxnew)
+        zdotw = sum(temp)
+        zdwabs = sum(abs(temp))
 
-            acca = zdwabs + (0.1 * abs(zdotw))
-            accb = zdwabs + (0.2 * abs(zdotw))
-            if (zdwabs >= acca) or (acca >= accb):
-                zdotw = 0
-
-            self.vmultd[k] = zdotw / self.zdota[k]
-            if (k > 0):
-                kk = self.iact[k]
-                self.dxnew -= self.vmultd[k] * self.cobyla.a[kk]
+        acca = zdwabs + (0.1 * abs(zdotw))
+        accb = zdwabs + (0.2 * abs(zdotw))
+        zdotw *= not((zdwabs >= acca) or (acca >= accb))
+        
+        self.vmultd[k] = zdotw / self.zdota[k]
+        if (k >= 1):
+            kk = self.iact[k]
+            self.dxnew -= self.vmultd[k] * self.cobyla.a[kk]
 
         if (self.mcon > self.cobyla.m):
             self.vmultd[self.nact] = max(0, self.vmultd[self.nact])
@@ -740,9 +741,9 @@ class Trstlp:
         # Complete VMULTC by finding the new constraint residuals
         self.dxnew = self.cobyla.dx + (self.step * self.sdirn)
         if ((self.mcon - 1) > self.nact):
-            for k in range(self.nact, self.mcon):
+            for k in range(self.nact + 1, self.mcon):
                 kk = self.iact[k]
-                temp = np.dot(self.cobyla.a[kk], self.dxnew)
+                temp = self.flatten(np.dot(self.cobyla.a[kk], self.dxnew))[0]
                 ssum = self.resmax - self.cobyla.con[kk] + temp
                 ssumabs = self.resmax + abs(self.cobyla.con[kk]) + abs(temp)
 
@@ -752,23 +753,23 @@ class Trstlp:
                 self.vmultd[k] = 0 if cond else ssum
 
         # Calculate the fraction of the step from DX to DXNEW that will be taken
-        self.ratio = 1
-        self.icon = None
+        ratio = 1
+        self.icon = -1
         for k in range(self.mcon):
             if self.vmultd[k] < 0:
                 temp = self.vmultc[k] / (self.vmultc[k] - vmultd)
-                if (temp < self.ratio):
-                    self.ratio = temp
+                if (temp < ratio):
+                    ratio = temp
                     self.icon = k
 
         # Update DX, VMULTC and RESMAX
-        temp = 1 - self.ratio
+        temp = 1 - ratio
         self.cobyla.dx = (temp * self.cobyla.dx) + (ratio * self.dxnew)
         self.vmultc = (temp * self.vmultc) + (ratio * self.vmultd)
         self.vmultc *= (self.vmultc > 0)
 
         if (self.mcon == self.cobyla.m):
-            self.resmax = resold + (self.ratio * (self.resmax - resold))
+            self.resmax = resold + (ratio * (self.resmax - resold))
         
         # If the full step is not acceptable then begin another iteration.
         # Otherwise switch to stage two or end the calculation
@@ -778,7 +779,7 @@ class Trstlp:
         if (self.step == self.stpful):
             return self.FINISH
 
-        self.L480_stage_ending()
+        return self.L480_stage_ending()
 
 
     def L480_stage_ending(self):
