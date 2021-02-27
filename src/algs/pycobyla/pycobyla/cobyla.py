@@ -235,7 +235,7 @@ class Cobyla(BasicTools):
             self.ibrnch = 1
 
             
-    def L140_new(self):
+    def L140_simplex_update(self):
         self._set_optimal_vertex()
         self._linear_coef()
 
@@ -284,7 +284,6 @@ class Cobyla(BasicTools):
         if self.prerec > 0 :
             barmu = fsum / self.prerec
 
-        breakpoint()
         if self.parmu < (barmu * 1.5):
             self.parmu = barmu * 2
             phi = datmat[-1, -2] + (self.parmu * datmat[-1, -1])
@@ -295,18 +294,19 @@ class Cobyla(BasicTools):
             if mask.any() and (self.parmu == 0):
                 if datmat[-1][mask].flat[0] < datmat[-1, -1]:
                     return self.L140()
-                
-        self.prerem = (self.parmu * self.prerec) - fsum[-1]
+
+        self.prerem = (self.parmu * self.prerec) - fsum
 
         # Calculate the constraint and objective functions at x(*). Then find the 
         # actual reduction in the merit function
-        self.x = self.self.optimal_vertex + self.dx
+        self.x = self.optimal_vertex + self.dx
         self.ibrnch = 1
         self._calcfc_iteration()
-        self.L140()
+        return self.L140()
 
         
     def L440(self):
+        breakpoint()
         vmold = self.datmat[-1, -2] + (self.parmu * datmat[-1, -1])
         vmnew = self.fval + (self.parmu * self.resmax)
         trured = vmold - vmnew
@@ -364,6 +364,8 @@ class Cobyla(BasicTools):
         if (trured > 0) and (trured >= prerem * 0.1):
             return self.L140()
 
+        return self.L550()
+
         
     def L550(self):
         if (self.iflag == 0):
@@ -389,6 +391,10 @@ class Cobyla(BasicTools):
                 self.parmu = 0
             elif ((cmax - cmin) < (self.parmu * denom)): 
                 self.parmu = (cmax - cmin) / denom
+                
+            return self.L140()
+
+        return self.L600_L620()
 
                 
     def L600_L620(self):
