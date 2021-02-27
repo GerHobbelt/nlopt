@@ -11,6 +11,11 @@ class BasicTools:
     
 
 class Cobyla(BasicTools):
+    LL140 = 140
+    LL370 = 370
+    LL440 = 440
+    FINISH = 0
+    
     def __init__(self, x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
         n = len(x)
         m = len(C)
@@ -59,13 +64,11 @@ class Cobyla(BasicTools):
         self.gamma = 0.5
         self.parmu = 0
         self.parsig = 0
-        self.ratio = 0
 
         # Others
         self.nfvals = 0
         self.prerec = None
         self.prerem = None
-        self.jdrop = None
 
     @property
     def current_values(self):
@@ -73,11 +76,24 @@ class Cobyla(BasicTools):
 
         
     def run(self):
-        breakpoint()
         self.set_initial_simplex()
         self.ibrnch = 1
-        self.L140()
-        self.L370()
+
+        breakpoint()
+        # LL370, LL440
+        stage = self.L140()
+        while stage != self.FINISH:
+            if stage == self.LL140:
+                # LL370, LL440
+                mth = self.L140
+            elif stage == self.LL370:
+                # LL140, LL440, FINISH
+                mth = self.L370
+            else:
+                # LL140, FINISH
+                mth = self.L440
+
+            stage = mth()    
         
         
     def _calcfc(self):
@@ -96,8 +112,6 @@ class Cobyla(BasicTools):
         
         self.con = np.array(tuple(constrain(self.x) for constrain in self.C), dtype=np.float)
         self.resmax = max((0, *(-self.con)))
-        if self.ibrnch == 1:
-            return self.L440()
         
         
     def _set_datmat_step(self, jdrop):
@@ -113,20 +127,24 @@ class Cobyla(BasicTools):
                 self.sim[:(jdrop + 1), jdrop] -= self.rho
                 for row in range(jdrop + 1):
                     self.simi[row, jdrop] = -sum(self.simi[row, :(jdrop + 1)])
-
-
-    def _calcfc_iteration(self, pos=-1):
-        self._calcfc()
-        self.datmat[pos,] = self.current_values
         
     
     def set_initial_simplex(self):
-        self._calcfc_iteration()
+        self._calcfc()
+        self.datmat[-1] = self.current_values
 
         for jdrop in range(self.n):
             self.x[jdrop] += self.rho
-            self._calcfc_iteration(pos=jdrop)
+            self._calcfc()
+            self.datmat[jdrop] = self.current_values
             self._set_datmat_step(jdrop)
+
+            
+    def _calcfc_iteration(self, pos=-1):
+        self._calcfc()
+        if self.ibrnch == 1:
+            return self.LL440
+        self.datmat[pos] = self.current_values
 
 
     def _set_optimal_vertex(self):
@@ -188,12 +206,12 @@ class Cobyla(BasicTools):
 
     
     def _new_vertex_improve_acceptability(self, pareta):
-        veta_max, self.jdrop = max(zip(self.veta, range(self.n)))
-        vsig_max, self.jdrop = max(zip(self.vsig, range(self.n))) if pareta >= veta_max else self.vsig[self.jdrop], self.jdrop
+        veta_max, jdrop = max(zip(self.veta, range(self.n)))
+        vsig_max, jdrop = max(zip(self.vsig, range(self.n))) if pareta >= veta_max else self.vsig[jdrop], jdrop
 
         # Calculate the step to the new vertex and its sign
         temp = gamma * rho * vsig_max
-        self.dx = temp * self.simi[..., self.jdrop]
+        self.dx = temp * self.simi[..., jdrop]
 
         ssum = self.flatten(np.dot(self.a, self.dx))
         temp = self.datmat[-1, :-1]
@@ -206,13 +224,13 @@ class Cobyla(BasicTools):
 
         # Update the elements of SIM and SIMI, and set the next X
         self.dx *= dxsign
-        self.sim[self.jdrop] = self.dx
-        self.simi[..., self.jdrop] /= np.dot(self.simi[..., self.jdrop], self.dx)
+        self.sim[jdrop] = self.dx
+        self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], self.dx)
 
         pdot = np.dot(dx, simi)
-        target = self.simi[..., self.jdrop]
+        target = self.simi[..., jdrop]
         self.simi -= np.multiply(pdot, self.simi)
-        self.simi[..., self.jdrop] = target
+        self.simi[..., jdrop] = target
         
         self.x = self.sim[-1] + self.dx
 
@@ -228,11 +246,14 @@ class Cobyla(BasicTools):
             # If a new vertex is needed to improve acceptability, then decide which
             # vertex to drop from simplex
             if self.ibrnch == 1 or self.iflag == 1:
-                return
+                return self.LL370
 
             self._new_vertex_improve_acceptability(pareta)
-            self._calcfc_iteration()
+            if self._calcfc_iteration() == self.LL440:
+                return self.LL440
             self.ibrnch = 1
+
+            return self.LL370
 
             
     def L140_simplex_update(self):
@@ -245,15 +266,17 @@ class Cobyla(BasicTools):
         # If a new vertex is needed to improve acceptability, then decide which
         # vertex to drop from simplex
         if self.ibrnch == 1 or self.iflag == 1:
-            return
+            return self.LL370
 
         self._new_vertex_improve_acceptability(pareta)
-        self._calcfc_iteration()
+        if self._calcfc_iteration() == self.LL440:
+            return self.LL440
         self.ibrnch = 1
 
         self._set_optimal_vertex()
         self._linear_coef()
         self.iflag = self._is_acceptable_simplex(pareta)
+        return self.LL370
         
         
     def L370(self):
@@ -289,11 +312,11 @@ class Cobyla(BasicTools):
             phi = datmat[-1, -2] + (self.parmu * datmat[-1, -1])
             temp = datmat[..., -2] + (self.parmu * datmat[..., -1])
             if (temp < phi).any():
-                return self.L140()
+                return self.LL140
             mask = (temp == phi)
             if mask.any() and (self.parmu == 0):
                 if datmat[-1][mask].flat[0] < datmat[-1, -1]:
-                    return self.L140()
+                    return self.LL140
 
         self.prerem = (self.parmu * self.prerec) - fsum
 
@@ -301,16 +324,17 @@ class Cobyla(BasicTools):
         # actual reduction in the merit function
         self.x = self.optimal_vertex + self.dx
         self.ibrnch = 1
-        self._calcfc_iteration()
-        return self.L140()
+        if self._calcfc_iteration() == self.LL440:
+            return self.LL440
+        
+        return self.LL140
 
         
     def L440(self):
-        breakpoint()
-        vmold = self.datmat[-1, -2] + (self.parmu * datmat[-1, -1])
+        vmold = self.datmat[-1, -2] + (self.parmu * self.datmat[-1, -1])
         vmnew = self.fval + (self.parmu * self.resmax)
         trured = vmold - vmnew
-        if (self.parmu == 0) and (self.f == self.datmat[-1, -2]):
+        if (self.parmu == 0) and (self.fval == self.datmat[-1, -2]):
             self.prerem = self.prerec
             trured = self.datmat[-1, -1] - self.resmax
         
@@ -318,13 +342,13 @@ class Cobyla(BasicTools):
         # vertices of the current simplex, the change being mandatory if TRURED is
         # positive. Firstly, JDROP is set to the index of the vertex that is to be
         # replaced
-        
-        self.ratio = 1 if (trured <= 0) else 0
-        self.jdrop = 0
-        temp = abs(np.array(self.dx * self.simi))
-        mask = (temp > ratio)
-        if mask.any():
-            self.jdrop = np.arange(self.n)[mask].flat[-1]
+        breakpoint()
+        jdrop = -1
+        ratio = 1 if (trured <= 0) else 0
+        temp = abs(self.flatten(self.dx * self.simi))
+        for j, value in zip(range(self.n), temp):
+            if temp > ratio:
+                ratio, jdrop = temp, j
             
         sigbar = temp * self.vsig
 
@@ -343,26 +367,26 @@ class Cobyla(BasicTools):
                     edgmax = temp
                     
         if lflag is not None:
-            self.jdrop = lflag
-        if self.jdrop == 0:
+            jdrop = lflag
+        if jdrop == -1:
             return self.L550()
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
-        self.sim[self.jdrop] = self.dx
-        self.dx * self.simi[..., self.jdrop]
+        self.sim[jdrop] = self.dx
+        self.dx * self.simi[..., jdrop]
         
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         temp = (self.dx * self.simi[...,0]).flat[0]
-        self.simi[..., self.jdrop] /= temp
-        target = self.simi[..., self.jdrop]
+        self.simi[..., jdrop] /= temp
+        target = self.simi[..., jdrop]
         temp = self.dx * self.simi
         self.simi -= np.repeat(np.array(target), len(temp)).reshape(self.simi.shape) * temp
-        self.simi[..., self.jdrop] = target
-        self.datmat[..., self.jdrop] = np.array((*self.con, self.fval, self.resmax))
+        self.simi[..., jdrop] = target
+        self.datmat[..., jdrop] = np.array((*self.con, self.fval, self.resmax))
 
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= prerem * 0.1):
-            return self.L140()
+            return self.LL140
 
         return self.L550()
 
@@ -370,7 +394,7 @@ class Cobyla(BasicTools):
     def L550(self):
         if (self.iflag == 0):
             self.ibrnch = 0
-            return self.L140()
+            return self.LL140
             
         # Otherwise reduce RHO if it is not at its least value and reset PARMU
         if (self.rho > self.rhoend):
@@ -391,8 +415,8 @@ class Cobyla(BasicTools):
                 self.parmu = 0
             elif ((cmax - cmin) < (self.parmu * denom)): 
                 self.parmu = (cmax - cmin) / denom
-                
-            return self.L140()
+
+            return self.LL140
 
         return self.L600_L620()
 
@@ -407,7 +431,7 @@ class Cobyla(BasicTools):
 
         # L620
         self.maxfun = self.nfvals
-        return
+        return self.FINISH
         
 
 class Trstlp(BasicTools):
