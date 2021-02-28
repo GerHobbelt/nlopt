@@ -167,19 +167,19 @@ class Cobyla:
         # Switch the best vertex into pole position if it is not there already,
         # and also update SIM, SIMI and DATMAT
         if (nbest != -1):
-            breakpoint()
             self.datmat[[nbest, -1]] = self.datmat[[-1, nbest]]
             temp = self.sim[nbest].copy()
             self.sim[nbest] = np.zeros(self.n)
             self.optimal_vertex += temp
             self.sim -= temp
-            self.simi[nbest] = -self.simi.sum(axis=0)
+            self.simi[..., nbest] = -self.simi.sum(axis=1)
 
         # Make an error return if SIGI is a poor approximation to the inverse of
         # the leading N by N submatrix of SIG
         sim_simi = np.matrix(self.sim) * np.matrix(self.simi)
         error = abs(sim_simi - np.eye(self.n)).max()
         error = 0 if error < 0  else error
+        breakpoint()
         if error > .1:
             # Error: COBYLA_MAXFUN (rc = 2)
             self.L600_L620()
