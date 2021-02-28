@@ -31,13 +31,14 @@ class Trstlp:
         self.iact = np.arange(self.cobyla.m + 1)
         self.iact[-1] = -1
         self.vmultc = np.array((*(self.resmax - self.cobyla.con), 0), dtype=np.float)
-        self.vmultd = np.zeros(self.cobyla.m + 1) 
+        self.vmultd = np.zeros(self.cobyla.m + 1)
+
+        # Data to return
+        self.ifull = 1
+        self.dx = np.zeros(self.cobyla.n)
 
 
     def run(self):
-        self.cobyla.ifull = 1
-        self.cobyla.dx = np.zeros(self.cobyla.n)
-        
         # End the current stage of the calculation if 3 consecutive iterations
         # have either failed to reduce the best calculated value of the objective
         # function or to increase the number of active constraints since the best
@@ -51,9 +52,11 @@ class Trstlp:
         while stage != self.FINISH:
             stage = self.L70()
 
+        return self.ifull, self.dx
+
         
     def L70(self):
-        optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.cobyla.dx, self.cobyla.a[-1])
+        optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.dx, self.cobyla.a[-1])
             
         if (self.icount == 0) or (optnew < self.optold):
             self.optold = optnew
@@ -274,9 +277,9 @@ class Trstlp:
         # calculation. Further, we skip the step if it could be zero within a
         # reasonable tolerance for computer rounding errors
         dd = (self.cobyla.rho ** 2)
-        mask = (abs(self.cobyla.dx) >= (self.cobyla.rho * 1e-6))
-        dd -= sum(self.cobyla.dx[mask] ** 2)
-        sd = np.dot(self.cobyla.dx, self.sdirn)
+        mask = (abs(self.dx) >= (self.cobyla.rho * 1e-6))
+        dd -= sum(self.dx[mask] ** 2)
+        sd = np.dot(self.dx, self.sdirn)
         ss = np.dot(self.sdirn, self.sdirn)
 
         if (dd <= 0):
@@ -291,7 +294,7 @@ class Trstlp:
             acca = self.step + (self.resmax * 0.1)
             accb = self.step + (self.resmax * 0.2)
             if ((self.step >= acca) or (acca >= accb)):
-                return self.L480_stage_ending()
+                return self.L480_finish_stage()
             
             self.step = min(self.step, self.resmax)
             
@@ -304,7 +307,7 @@ class Trstlp:
         # Because DXNEW will be changed during the calculation of some Lagrange
         # multipliers, it will be restored to the following value later
 
-        self.dxnew = self.cobyla.dx + (self.step * self.sdirn)
+        self.dxnew = self.dx + (self.step * self.sdirn)
         
         if (self.mcon == self.cobyla.m):
             resold, self.resmax = self.resmax, 0
@@ -335,13 +338,14 @@ class Trstlp:
             self.vmultd[self.nact] = max(0, self.vmultd[self.nact])
                         
         # Complete VMULTC by finding the new constraint residuals
-        self.dxnew = self.cobyla.dx + (self.step * self.sdirn)
+        self.dxnew = self.dx + (self.step * self.sdirn)
         if ((self.mcon - 1) > self.nact):
+            confval = self.cobyla.current_values[:-1]
             for k in range(self.nact + 1, self.mcon):
                 kk = self.iact[k]
                 temp = np.dot(self.cobyla.a[kk], self.dxnew)
-                ssum = self.resmax - self.cobyla.con[kk] + temp
-                ssumabs = self.resmax + abs(self.cobyla.con[kk]) + abs(temp)
+                ssum = self.resmax - confval[kk] + temp
+                ssumabs = self.resmax + abs(confval[kk]) + abs(temp)
 
                 acca = ssumabs + (0.1 * abs(ssum))
                 accb = ssumabs + (0.2 * abs(ssum))
@@ -350,17 +354,17 @@ class Trstlp:
 
         # Calculate the fraction of the step from DX to DXNEW that will be taken
         ratio = 1
-        self.icon = -1
+        self.icon = -1            
         for k in range(self.mcon):
             if self.vmultd[k] < 0:
-                temp = self.vmultc[k] / (self.vmultc[k] - vmultd)
+                temp = self.vmultc[k] / (self.vmultc[k] - self.vmultd[k])
                 if (temp < ratio):
                     ratio = temp
                     self.icon = k
 
         # Update DX, VMULTC and RESMAX
         temp = 1 - ratio
-        self.cobyla.dx = (temp * self.cobyla.dx) + (ratio * self.dxnew)
+        self.dx = (temp * self.dx) + (ratio * self.dxnew)
         self.vmultc = (temp * self.vmultc) + (ratio * self.vmultd)
         self.vmultc *= (self.vmultc > 0)
 
@@ -375,10 +379,10 @@ class Trstlp:
         if (self.step == self.stpful):
             return self.FINISH
 
-        return self.L480_stage_ending()
+        return self.L480_finish_stage()
 
 
-    def L480_stage_ending(self):
+    def L480_finish_stage(self):
         self.mcon = self.cobyla.m + 1
         self.icon = self.iact[-1] = self.cobyla.m
         self.vmultc[-1] = 0
@@ -389,7 +393,7 @@ class Trstlp:
 
     def L490_termination_chance(self):
         if (self.mcon == self.cobyla.m):
-            return self.L480_stage_ending()
+            return self.L480_finish_stage()
         
-        self.cobyla.ifull = 0
+        self.ifull = 0
         return self.FINISH
