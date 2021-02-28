@@ -1,20 +1,17 @@
 import typing
 
 import numpy as np
-
-
-class BasicTools:
-    
-    @classmethod
-    def flatten(cls, mt, dtype=np.float) -> np.array:
-        return np.array(mt, dtype=dtype).ravel()
     
 
-class Cobyla(BasicTools):
+class Cobyla:
+    # Stages 
     LL140 = 140
     LL370 = 370
     LL440 = 440
     FINISH = 0
+
+    # Constants
+    DELTA = 1.1
     
     def __init__(self, x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
         n = len(x)
@@ -29,6 +26,7 @@ class Cobyla(BasicTools):
         self.rhoend = rhoend
         self.rho = self.rhobeg
         self.maxfun = maxfun
+        self.nfvals = 0
         
         # mpp (m constrains, fval, resmax)
         self.con = None # m constrains values
@@ -36,11 +34,11 @@ class Cobyla(BasicTools):
         self.resmax = 0
 
         # simplex
-        self.sim = self.rho * np.matrix(np.eye(n))
+        self.sim = self.rho * np.eye(n)
         self.optimal_vertex = self.x.copy()
 
         # inverse simplex
-        self.simi = (1 / self.rho) * np.matrix(np.eye(n))
+        self.simi = (1 / self.rho) * np.eye(n)
 
         # for each vertex, m constrains values, f, resmax
         # last one for the best vertex
@@ -55,7 +53,7 @@ class Cobyla(BasicTools):
 
         # flags
         self.ibrnch = 0
-        self.iflag = 0 # Simplex acceptable simplex
+        self.iflag = 0 # Acceptable simplex
         self.ifull = None
 
         # Params
@@ -66,7 +64,6 @@ class Cobyla(BasicTools):
         self.parsig = 0
 
         # Others
-        self.nfvals = 0
         self.prerec = None
         self.prerem = None
 
@@ -167,7 +164,7 @@ class Cobyla(BasicTools):
         # and also update SIM, SIMI and DATMAT
         if (nbest != -1):
             self.datmat[[nbest, -1]] = self.datmat[[-1, nbest]]
-            temp = np.array(self.sim[nbest], dtype=np.float)
+            temp = self.sim[nbest].copy()
             self.sim[nbest] = np.zeros(self.n)
             self.optimal_vertex += temp
             self.sim -= temp
@@ -175,7 +172,7 @@ class Cobyla(BasicTools):
 
         # Make an error return if SIGI is a poor approximation to the inverse of
         # the leading N by N submatrix of SIG
-        sim_simi = self.sim * self.simi
+        sim_simi = np.matrix(self.sim) * np.matrix(self.simi)
         error = abs(sim_simi - np.eye(self.n)).max()
         error = 0 if error < 0  else error
         if error > .1:
@@ -192,7 +189,7 @@ class Cobyla(BasicTools):
         tcon = *self.con, self.fx = -self.datmat[-1, :-1]
 
         w = np.matrix(self.datmat[:-1, :-1] + tcon)
-        self.a = (self.simi * w).T  # (m+1) * n
+        self.a = np.array((np.matrix(self.simi) * w).T)  # (m+1) * n
         self.a[-1] *= -1
 
         
@@ -200,8 +197,8 @@ class Cobyla(BasicTools):
         # Calculate the values of sigma and eta, and set IFLAG=0 if the current
         # simplex is not acceptable
         self.parsig = self.alpha * self.rho
-        self.vsig = self.flatten((self.simi ** 2).sum(axis=0)) **.5
-        self.veta = self.flatten((self.sim ** 2).sum(axis=1)) ** .5
+        self.vsig = 1 / (self.simi ** 2).sum(axis=0) ** .5 # col sum
+        self.veta = (self.sim ** 2).sum(axis=1) ** .5 # row sum 
         return not(np.any(self.vsig < self.parsig) or np.any(self.veta > pareta))
 
     
@@ -213,7 +210,7 @@ class Cobyla(BasicTools):
         temp = gamma * rho * vsig_max
         self.dx = temp * self.simi[..., jdrop]
 
-        ssum = self.flatten(np.dot(self.a, self.dx))
+        ssum = np.dot(self.a, self.dx)
         temp = self.datmat[-1, :-1]
 
         cvmaxp = max((0, *(-ssum[:-1] -temp)))
@@ -228,8 +225,8 @@ class Cobyla(BasicTools):
         self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], self.dx)
 
         pdot = np.dot(dx, simi)
-        target = self.simi[..., jdrop]
-        self.simi -= np.multiply(pdot, self.simi)
+        target = self.simi[..., jdrop].copy()
+        self.simi -= self.simi * pdot
         self.simi[..., jdrop] = target
         
         self.x = self.sim[-1] + self.dx
@@ -294,7 +291,7 @@ class Cobyla(BasicTools):
         # Predict the change to F and the new maximum constraint violation if the
         # variables are altered from x(0) to x(0)+DX
         self.fval = 0
-        temp = (np.array(self.a) * self.dx).sum(axis=1)
+        temp = (self.a * self.dx).sum(axis=1)
         csum, fsum = self.con - temp[:-1], self.fval - temp[-1]
         resnew = max((0, *csum))
 
@@ -342,30 +339,29 @@ class Cobyla(BasicTools):
         # vertices of the current simplex, the change being mandatory if TRURED is
         # positive. Firstly, JDROP is set to the index of the vertex that is to be
         # replaced
-        breakpoint()
         jdrop = -1
         ratio = 1 if (trured <= 0) else 0
-        temp = abs(self.flatten(self.dx * self.simi))
+        temp = abs(np.dot(self.dx, self.simi.T))
         for j, value in zip(range(self.n), temp):
-            if temp > ratio:
-                ratio, jdrop = temp, j
-            
+            if value > ratio:
+                ratio, jdrop = value, j
+                
         sigbar = temp * self.vsig
 
-        delta = 1.1
-        edgmax = delta * self.rho
+        edgmax = self.DELTA * self.rho
         mask = (sigbar >= self.parsig) | (sigbar >= self.vsig)
 
         lflag = None
         if mask.any():
-            temp = (sum((self.dx - self.sim) ** 2) if trured > 0 else veta) ** .5
+            temp = ((self.dx - self.sim) ** 2).sum(axis=1) if trured > 0 else veta
+            temp **= .5
             temp = temp[mask]
             idx = np.arange(len(mask))[mask]
             for j, ttemp in zip(idx, temp):
                 if ttemp > edgmax:
-                    lflag = idx
-                    edgmax = temp
-                    
+                    lflag = j
+                    edgmax = ttemp
+
         if lflag is not None:
             jdrop = lflag
         if jdrop == -1:
@@ -373,19 +369,16 @@ class Cobyla(BasicTools):
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         self.sim[jdrop] = self.dx
-        self.dx * self.simi[..., jdrop]
-        
-        # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
-        temp = (self.dx * self.simi[...,0]).flat[0]
+        temp = np.dot(self.dx, self.simi[..., jdrop])
         self.simi[..., jdrop] /= temp
-        target = self.simi[..., jdrop]
-        temp = self.dx * self.simi
-        self.simi -= np.repeat(np.array(target), len(temp)).reshape(self.simi.shape) * temp
+        target = self.simi[..., jdrop].copy()
+        temp = np.dot(self.dx, self.simi.T)
+        self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
         self.simi[..., jdrop] = target
-        self.datmat[..., jdrop] = np.array((*self.con, self.fval, self.resmax))
+        self.datmat[jdrop] = np.array((*self.con, self.fval, self.resmax))
 
         # Branch back for further iterations with the current RHO
-        if (trured > 0) and (trured >= prerem * 0.1):
+        if (trured > 0) and (trured >= self.prerem * 0.1):
             return self.LL140
 
         return self.L550()
@@ -425,7 +418,7 @@ class Cobyla(BasicTools):
         # Return the best calculated values of the variables
         if (self.ifull != 1):
             # L600
-            self.x = self.sim[-1]
+            self.x = self.sim[-1].copy()
             self.fval = self.datmat[-1, -2]
             self.resmax = self.datmat[-1, -1]
 
@@ -434,7 +427,7 @@ class Cobyla(BasicTools):
         return self.FINISH
         
 
-class Trstlp(BasicTools):
+class Trstlp:
     FINISH = 0
     KEEP_STAGE = 1
     CHANGE_STAGE = 2
@@ -486,7 +479,7 @@ class Trstlp(BasicTools):
 
         
     def L70(self):
-        optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.cobyla.dx, self.flatten(self.cobyla.a[-1]))
+        optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.cobyla.dx, self.cobyla.a[-1])
             
         if (self.icount == 0) or (optnew < self.optold):
             self.optold = optnew
@@ -509,7 +502,7 @@ class Trstlp(BasicTools):
             return self.L260()
 
         kk = self.iact[self.icon]
-        self.dxnew = self.flatten(self.cobyla.a[kk])
+        self.dxnew = self.cobyla.a[kk]
         self.tot = 0
 
         for k in range(self.cobyla.n - 1, -1, -1):
@@ -612,7 +605,7 @@ class Trstlp(BasicTools):
             self.iact[k] = isave
             self.vmultc[k] = vsave
 
-        temp = np.dot(self.z[self.nact], self.flatten(self.cobyla.a[kk]))
+        temp = np.dot(self.z[self.nact], self.cobyla.a[kk])
         if (temp == 0):
             return self.L490_termination_chance()
         
@@ -652,8 +645,7 @@ class Trstlp(BasicTools):
             return self.L320()
 
         kk = self.iact[self.nact]
-        row = self.flatten(self.cobyla.a[kk])
-        temp = (np.dot(self.sdirn, row) - 1) / self.zdota[self.nact]
+        temp = (np.dot(self.sdirn, self.cobyla.a[kk]) - 1) / self.zdota[self.nact]
         self.sdirn -= (temp * self.z[self.nact])
         
         return self.L340()
@@ -745,7 +737,7 @@ class Trstlp(BasicTools):
             for k in range(0, self.nact + 1):
                 kk = self.iact[k]
                 temp = self.cobyla.con[kk] - np.dot(self.cobyla.a[kk], self.dxnew)
-                self.resmax = max(self.resmax, *self.flatten(temp))
+                self.resmax = max(self.resmax, temp)
                 
         # Set VMULTD to the VMULTC vector that would occur if DX became DXNEW. A
         # device is included to force VMULTD(K)=0.0 if deviations from this value
@@ -773,7 +765,7 @@ class Trstlp(BasicTools):
         if ((self.mcon - 1) > self.nact):
             for k in range(self.nact + 1, self.mcon):
                 kk = self.iact[k]
-                temp = self.flatten(np.dot(self.cobyla.a[kk], self.dxnew))[0]
+                temp = np.dot(self.cobyla.a[kk], self.dxnew)
                 ssum = self.resmax - self.cobyla.con[kk] + temp
                 ssumabs = self.resmax + abs(self.cobyla.con[kk]) + abs(temp)
 
