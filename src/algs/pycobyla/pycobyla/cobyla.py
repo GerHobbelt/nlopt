@@ -87,9 +87,9 @@ class Cobyla:
         self.set_initial_simplex()
         self.ibrnch = 1
 
-        breakpoint()
         # LL370, LL440
         stage = self.L140()
+        breakpoint()
         while stage != self.FINISH:
             if stage == self.LL140:
                 # LL370, LL440
@@ -245,6 +245,7 @@ class Cobyla:
 
 
     def L140(self):
+        breakpoint()
         parsig = self.parsig
         pareta = self.pareta
         
@@ -292,6 +293,7 @@ class Cobyla:
         
     def L370(self):
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
+        breakpoint()
         trstlp = Trstlp(self)
         self.ifull, self.dx = trstlp.run()
 
@@ -319,14 +321,15 @@ class Cobyla:
             barmu = fsum / self.prerec
 
         if self.parmu < (barmu * 1.5):
+            breakpoint()
             self.parmu = barmu * 2
-            phi = datmat[-1, -2] + (self.parmu * datmat[-1, -1])
-            temp = datmat[..., -2] + (self.parmu * datmat[..., -1])
+            phi = self.datmat[-1, -2] + (self.parmu * self.datmat[-1, -1])
+            temp = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
             if (temp < phi).any():
                 return self.LL140
             mask = (temp == phi)
             if mask.any() and (self.parmu == 0):
-                if datmat[-1][mask].flat[0] < datmat[-1, -1]:
+                if self.datmat[-1][mask].flat[0] < self.datmat[-1, -1]:
                     return self.LL140
 
         self.prerem = (self.parmu * self.prerec) - fsum
@@ -342,6 +345,7 @@ class Cobyla:
 
         
     def L440(self):
+        breakpoint()
         vmold = self.datmat[-1, -2] + (self.parmu * self.datmat[-1, -1])
         vmnew = self.fval + (self.parmu * self.resmax)
         trured = vmold - vmnew
@@ -367,7 +371,7 @@ class Cobyla:
 
         lflag = None
         if mask.any():
-            temp = ((self.dx - self.sim) ** 2).sum(axis=1) if trured > 0 else veta
+            temp = ((self.dx - self.sim) ** 2).sum(axis=1) if trured > 0 else self.veta
             temp **= .5
             temp = temp[mask]
             idx = np.arange(len(mask))[mask]
@@ -383,7 +387,6 @@ class Cobyla:
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         self.sim[jdrop] = self.dx
-        breakpoint()
         temp = np.dot(self.dx, self.simi[..., jdrop])
         self.simi[..., jdrop] /= temp
         target = self.simi[..., jdrop].copy()
@@ -407,7 +410,7 @@ class Cobyla:
         # Otherwise reduce RHO if it is not at its least value and reset PARMU
         if (self.rho > self.rhoend):
             self.rho = self.rhoend if (self.rho <= (self.rhoend * 1.5)) else (self.rho / 2)
-            if parmu > 0:
+            if self.parmu > 0:
                 denom = 0
                 for col, ref in zip(self.datmat[:-1, :-2].T, self.datmat[-1, :-2]):
                     cmin = min((ref, *col.min()))
@@ -433,7 +436,7 @@ class Cobyla:
         # Return the best calculated values of the variables
         if (self.ifull != 1):
             # L600
-            self.x = self.sim[-1].copy()
+            self.x = self.optimal_vertex
             self.fval = self.datmat[-1, -2]
             self.resmax = self.datmat[-1, -1]
 
