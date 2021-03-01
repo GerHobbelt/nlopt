@@ -44,10 +44,11 @@ class Trstlp:
         # function or to increase the number of active constraints since the best
         # value was calculated. This strategy prevents cycling, but there is a
         # remote possibility that it will cause premature termination
-        while True:
-            stage = self.L70()
-            if stage != self.KEEP_STAGE:
-                break
+        if self.resmax == 0:
+            stage = self.L480_second_stage()
+        else:
+            while (stage := self.L70()) == self.KEEP_STAGE:
+                pass
 
         while stage != self.FINISH:
             stage = self.L70()
@@ -57,7 +58,7 @@ class Trstlp:
         
     def L70(self):
         optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.dx, self.cobyla.a[-1])
-            
+
         if (self.icount == 0) or (optnew < self.optold):
             self.optold = optnew
             self.nactx = self.nact
@@ -79,7 +80,7 @@ class Trstlp:
             return self.L260()
 
         kk = self.iact[self.icon]
-        self.dxnew = self.cobyla.a[kk]
+        self.dxnew = self.cobyla.a[kk].copy()
         self.tot = 0
 
         for k in range(self.cobyla.n - 1, -1, -1):
@@ -237,7 +238,7 @@ class Trstlp:
                 kp = k + 1
                 kk = self.iact[kp]
                 
-                sp = np.dot(self.z[k], self.a[kk])
+                sp = np.dot(self.z[k], self.cobyla.a[kk])
                 temp = ((sp ** 2) + (self.zdota[kp] ** 2)) ** 0.5
                 alpha = self.zdota[kp] / temp
                 beta = sp / temp
@@ -294,7 +295,7 @@ class Trstlp:
             acca = self.step + (self.resmax * 0.1)
             accb = self.step + (self.resmax * 0.2)
             if ((self.step >= acca) or (acca >= accb)):
-                return self.L480_finish_stage()
+                return self.L480_second_stage()
             
             self.step = min(self.step, self.resmax)
             
@@ -379,10 +380,10 @@ class Trstlp:
         if (self.step == self.stpful):
             return self.FINISH
 
-        return self.L480_finish_stage()
+        return self.L480_second_stage()
 
 
-    def L480_finish_stage(self):
+    def L480_second_stage(self):
         self.mcon = self.cobyla.m + 1
         self.icon = self.iact[-1] = self.cobyla.m
         self.vmultc[-1] = 0
@@ -393,7 +394,7 @@ class Trstlp:
 
     def L490_termination_chance(self):
         if (self.mcon == self.cobyla.m):
-            return self.L480_finish_stage()
+            return self.L480_second_stage()
         
         self.ifull = 0
         return self.FINISH

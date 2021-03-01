@@ -67,6 +67,17 @@ class Cobyla:
         self.prerec = None
         self.prerem = None
 
+
+    @property
+    def data(self):
+        print(f'x: {self.x}')
+        print(f'optimal_vertex: {self.optimal_vertex}')
+        print(f'current_values: {self.current_values}')
+        print(f'datmat: \n{self.datmat}')
+        print(f'a: \n{self.a}')
+        print(f'sim: \n{self.sim}')
+        print(f'simi: \n{self.simi}')
+
         
     @property
     def current_values(self):
@@ -89,7 +100,6 @@ class Cobyla:
 
         # LL370, LL440
         stage = self.L140()
-        breakpoint()
         while stage != self.FINISH:
             if stage == self.LL140:
                 # LL370, LL440
@@ -214,9 +224,9 @@ class Cobyla:
 
     
     def _new_vertex_improve_acceptability(self, pareta):
-        cond = (pareta >= veta_max)
         veta_max, jdrop = max(zip(self.veta, range(self.n)))
-        vsig_max, jdrop = max(zip(self.vsig, range(self.n))) if cond else self.vsig[jdrop], jdrop
+        vsig_max, jdrop = max(zip(self.vsig, range(self.n))) \
+            if (pareta >= veta_max) else (self.vsig[jdrop], jdrop)
 
         # Calculate the step to the new vertex and its sign
         temp = self.GAMMA * self.rho * vsig_max
@@ -241,11 +251,10 @@ class Cobyla:
         self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
         self.simi[..., jdrop] = target
         
-        self.x = self.sim[-1] + self.dx
+        self.x = self.optimal_vertex + self.dx
 
 
     def L140(self):
-        breakpoint()
         parsig = self.parsig
         pareta = self.pareta
         
@@ -268,6 +277,7 @@ class Cobyla:
 
             
     def L140_simplex_update(self):
+        breakpoint()
         parsig = self.parsig
         pareta = self.pareta
         
@@ -293,10 +303,9 @@ class Cobyla:
         
     def L370(self):
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
-        breakpoint()
         trstlp = Trstlp(self)
         self.ifull, self.dx = trstlp.run()
-
+        
         if self.ifull == 0:
             temp = sum(self.dx ** 2)
             cond = (temp < 0.25 * (self.rho ** 2)) 
@@ -321,7 +330,6 @@ class Cobyla:
             barmu = fsum / self.prerec
 
         if self.parmu < (barmu * 1.5):
-            breakpoint()
             self.parmu = barmu * 2
             phi = self.datmat[-1, -2] + (self.parmu * self.datmat[-1, -1])
             temp = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
@@ -345,7 +353,6 @@ class Cobyla:
 
         
     def L440(self):
-        breakpoint()
         vmold = self.datmat[-1, -2] + (self.parmu * self.datmat[-1, -1])
         vmnew = self.fval + (self.parmu * self.resmax)
         trured = vmold - vmnew
@@ -359,13 +366,12 @@ class Cobyla:
         # replaced
         jdrop = -1
         ratio = 1 if (trured <= 0) else 0
-        temp = abs(np.dot(self.dx, self.simi.T))
+        temp = abs(np.dot(self.dx, self.simi))
         for j, value in zip(range(self.n), temp):
             if value > ratio:
                 ratio, jdrop = value, j
                 
         sigbar = temp * self.vsig
-
         edgmax = self.DELTA * self.rho
         mask = (sigbar >= self.parsig) | (sigbar >= self.vsig)
 
@@ -413,8 +419,8 @@ class Cobyla:
             if self.parmu > 0:
                 denom = 0
                 for col, ref in zip(self.datmat[:-1, :-2].T, self.datmat[-1, :-2]):
-                    cmin = min((ref, *col.min()))
-                    cmax = max((ref, *col.max()))
+                    cmin = min((ref, col.min()))
+                    cmax = max((ref, col.max()))
                     if (cmin < (cmax / 2)):
                         temp = max(cmax, 0) - cmin
                         denom = temp if denom <= 0 else min(denom, temp)
