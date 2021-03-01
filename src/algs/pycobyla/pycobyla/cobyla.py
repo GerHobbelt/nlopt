@@ -293,7 +293,6 @@ class Cobyla:
     def L370(self):
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
         trstlp = Trstlp(self)
-        breakpoint()
         self.ifull, self.dx = trstlp.run()
 
         if self.ifull == 0:
@@ -384,10 +383,11 @@ class Cobyla:
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         self.sim[jdrop] = self.dx
+        breakpoint()
         temp = np.dot(self.dx, self.simi[..., jdrop])
         self.simi[..., jdrop] /= temp
         target = self.simi[..., jdrop].copy()
-        temp = np.dot(self.dx, self.simi.T)
+        temp = np.dot(self.dx, self.simi)
         self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
         self.simi[..., jdrop] = target
         self.datmat[jdrop] = np.array((*self.con, self.fval, self.resmax))
