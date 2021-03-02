@@ -126,6 +126,7 @@ class Cobyla:
         except Exception as e:
             # Error: COBYLA_USERABORT (rc = 3)
             self.L600_L620()
+            breakpoint()
             raise UserWarning('cobyla: user requested end of minimitzation')
         
         self.con = np.array(tuple(constrain(self.x) for constrain in self.C), dtype=np.float)
@@ -176,6 +177,7 @@ class Cobyla:
             phi_value = phi(fx_j, resmax_j)
             if phi_value < phimin:
                 nbest = j
+                phimin = phi_value
             else:
                 resmax_best = self.datmat[nbest, -1]
                 cond = (phi_value == phimin) and (self.parmu == 0) and (resmax_j < resmax_best)
@@ -255,6 +257,7 @@ class Cobyla:
 
 
     def L140(self):
+        breakpoint()
         parsig = self.parsig
         pareta = self.pareta
         
@@ -277,7 +280,6 @@ class Cobyla:
 
             
     def L140_simplex_update(self):
-        breakpoint()
         parsig = self.parsig
         pareta = self.pareta
         
