@@ -56,8 +56,8 @@ class Cobyla:
         self.dx = None
 
         # flags
-        self.ibrnch = 0
-        self.iflag = 0 # Acceptable simplex
+        self.ibrnch = False
+        self.iflag = False # Acceptable simplex
         self.ifull = None
 
         # Params
@@ -96,7 +96,7 @@ class Cobyla:
         
     def run(self):
         self.set_initial_simplex()
-        self.ibrnch = 1
+        self.ibrnch = True
 
         # LL370, LL440
         stage = self.L140()
@@ -126,10 +126,10 @@ class Cobyla:
         except Exception as e:
             # Error: COBYLA_USERABORT (rc = 3)
             self.L600_L620()
-            breakpoint()
             raise UserWarning('cobyla: user requested end of minimitzation')
-        
-        self.con = np.array(tuple(constrain(self.x) for constrain in self.C), dtype=np.float)
+
+        c_iter = (constrain(self.x) for constrain in self.C)
+        self.con = np.array(tuple(c_iter), dtype=np.float)
         self.resmax = max((0, *(-self.con)))
         
         
@@ -161,7 +161,7 @@ class Cobyla:
             
     def _calcfc_iteration(self, pos=-1):
         self._calcfc()
-        if self.ibrnch == 1:
+        if self.ibrnch == True:
             return self.LL440
         self.datmat[pos] = self.current_values
 
@@ -196,6 +196,7 @@ class Cobyla:
         # Make an error return if SIGI is a poor approximation to the inverse of
         # the leading N by N submatrix of SIG
         sim_simi = np.matrix(self.sim) * np.matrix(self.simi)
+        #sim_simi = np.dot(self.sim, self.simi)
         error = abs(sim_simi - np.eye(self.n)).max()
         error = 0 if error < 0  else error
         if error > .1:
@@ -209,16 +210,16 @@ class Cobyla:
         # and constraint functions, placing minus the objective function gradient
         # after the constraint gradients in the array A. The vector W is used for
         # working space
-        tcon = *con, self.fx = -self.datmat[-1, :-1]
-        self.con = np.array(con, dtype=np.float)
+        tcon = *_, self.fx = -self.datmat[-1, :-1]
+        self.con = tcon[:-1]
 
-        w = np.matrix(self.datmat[:-1, :-1] + tcon)
-        self.a = np.array((np.matrix(self.simi) * w).T)  # (m+1) * n
+        w = self.datmat[:-1, :-1] + tcon
+        self.a = np.dot(self.simi, w).T  # (m+1) * n
         self.a[-1] *= -1
 
         
     def _is_acceptable_simplex(self, parsig, pareta):
-        # Calculate the values of sigma and eta, and set IFLAG=0 if the current
+        # Calculate the values of sigma and eta, and set IFLAG=False if the current
         # simplex is not acceptable
         self.vsig = 1 / (self.simi ** 2).sum(axis=0) ** .5 # col sum
         self.veta = (self.sim ** 2).sum(axis=1) ** .5 # row sum 
@@ -237,8 +238,8 @@ class Cobyla:
         ssum = np.dot(self.a, self.dx)
         temp = self.datmat[-1, :-1]
 
-        cvmaxp = max((0, *(-ssum[:-1] -temp)))
-        cvmaxm = max((0, *(ssum[:-1] -temp)))
+        cvmaxp = max((0, *(-ssum - temp)[:-1]))
+        cvmaxm = max((0, *(ssum - temp)[:-1]))
 
         cond = (self.parmu * (cvmaxp - cvmaxm) > (2 * ssum[-1]))
         dxsign = (-1 ** cond)
@@ -246,18 +247,18 @@ class Cobyla:
         # Update the elements of SIM and SIMI, and set the next X
         self.dx *= dxsign
         self.sim[jdrop] = self.dx
-        self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], self.dx)
 
-        temp = np.dot(self.dx, self.simi.T)
+        self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], self.dx)
+        temp = np.dot(self.dx, self.simi)
         target = self.simi[..., jdrop].copy()
         self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
         self.simi[..., jdrop] = target
-        
+
         self.x = self.optimal_vertex + self.dx
+        return jdrop
 
 
     def L140(self):
-        breakpoint()
         parsig = self.parsig
         pareta = self.pareta
         
@@ -268,15 +269,16 @@ class Cobyla:
 
             # If a new vertex is needed to improve acceptability, then decide which
             # vertex to drop from simplex
-            if self.ibrnch == 1 or self.iflag == 1:
+            if (self.ibrnch == True) or (self.iflag == True):
                 return self.LL370
 
-            self._new_vertex_improve_acceptability(pareta)
-            if self._calcfc_iteration() == self.LL440:
+            jdrop = self._new_vertex_improve_acceptability(pareta)
+            breakpoint()
+            if self._calcfc_iteration(pos=jdrop) == self.LL440:
                 return self.LL440
-            self.ibrnch = 1
+            self.ibrnch = True
 
-            return self.LL370
+        return self.LL370
 
             
     def L140_simplex_update(self):
@@ -289,14 +291,14 @@ class Cobyla:
 
         # If a new vertex is needed to improve acceptability, then decide which
         # vertex to drop from simplex
-        if self.ibrnch == 1 or self.iflag == 1:
+        if (self.ibrnch == True) or (self.iflag == True):
             return self.LL370
 
         self._new_vertex_improve_acceptability(pareta)
         if self._calcfc_iteration() == self.LL440:
             return self.LL440
         
-        self.ibrnch = 1
+        self.ibrnch = True
         self._set_optimal_vertex()
         self._linear_coef()
         self.iflag = self._is_acceptable_simplex(parsig, pareta)
@@ -312,7 +314,7 @@ class Cobyla:
             temp = sum(self.dx ** 2)
             cond = (temp < 0.25 * (self.rho ** 2)) 
             if cond:
-                self.ibrnch = 1
+                self.ibrnch = True
                 return self.L550()
 
         # Predict the change to F and the new maximum constraint violation if the
@@ -333,13 +335,13 @@ class Cobyla:
 
         if self.parmu < (barmu * 1.5):
             self.parmu = barmu * 2
+            res = self.datmat[-1, -1]
             phi = self.datmat[-1, -2] + (self.parmu * self.datmat[-1, -1])
-            temp = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
-            if (temp < phi).any():
-                return self.LL140
-            mask = (temp == phi)
-            if mask.any() and (self.parmu == 0):
-                if self.datmat[-1][mask].flat[0] < self.datmat[-1, -1]:
+            phi_values = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
+            for phi_val, res_val in zip(phi_values, self.datmat[:-1, -1]):
+                if (phi_val < phi):
+                    return self.LL140
+                if (phi_val == phi) and (self.parmu == 0) and (res_val < res):
                     return self.LL140
 
         self.prerem = (self.parmu * self.prerec) - fsum
@@ -347,7 +349,7 @@ class Cobyla:
         # Calculate the constraint and objective functions at x(*). Then find the 
         # actual reduction in the merit function
         self.x = self.optimal_vertex + self.dx
-        self.ibrnch = 1
+        self.ibrnch = True
         if self._calcfc_iteration() == self.LL440:
             return self.LL440
         
@@ -411,8 +413,8 @@ class Cobyla:
 
         
     def L550(self):
-        if (self.iflag == 0):
-            self.ibrnch = 0
+        if (self.iflag == False):
+            self.ibrnch = False
             return self.LL140
             
         # Otherwise reduce RHO if it is not at its least value and reset PARMU
