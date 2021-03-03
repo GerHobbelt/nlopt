@@ -99,6 +99,7 @@ class Cobyla:
         self.ibrnch = True
 
         # LL370, LL440
+        breakpoint()
         stage = self.L140()
         while stage != self.FINISH:
             if stage == self.LL140:
@@ -213,8 +214,8 @@ class Cobyla:
         tcon = *_, self.fx = -self.datmat[-1, :-1]
         self.con = tcon[:-1]
 
-        w = self.datmat[:-1, :-1] + tcon
-        self.a = np.dot(self.simi, w).T  # (m+1) * n
+        ww = (self.datmat[:-1, :-1] + tcon).T
+        self.a = np.dot(ww, self.simi.T)  # (m+1) * n
         self.a[-1] *= -1
 
         
@@ -428,14 +429,13 @@ class Cobyla:
                         temp = max(cmax, 0) - cmin
                         denom = temp if denom <= 0 else min(denom, temp)
                         
-            temp = self.datmat[..., -2].T
-            cmin = temp.min()
-            cmax = temp.max()
-            if denom == 0:
-                self.parmu = 0
-            elif ((cmax - cmin) < (self.parmu * denom)): 
-                self.parmu = (cmax - cmin) / denom
-
+                temp = self.datmat[..., -2].T
+                cmin = temp.min()
+                cmax = temp.max()
+                if denom == 0:
+                    self.parmu = 0
+                elif ((cmax - cmin) < (self.parmu * denom)): 
+                    self.parmu = (cmax - cmin) / denom
             return self.LL140
 
         return self.L600_L620()
