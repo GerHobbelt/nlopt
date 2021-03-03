@@ -34,7 +34,7 @@ class Trstlp:
         self.vmultd = np.zeros(self.cobyla.m + 1)
 
         # Data to return
-        self.ifull = 1
+        self.ifull = True
         self.dx = np.zeros(self.cobyla.n)
 
 
@@ -344,9 +344,9 @@ class Trstlp:
             confval = self.cobyla.current_values[:-1]
             for k in range(self.nact + 1, self.mcon):
                 kk = self.iact[k]
-                temp = np.dot(self.cobyla.a[kk], self.dxnew)
-                ssum = self.resmax - confval[kk] + temp
-                ssumabs = self.resmax + abs(confval[kk]) + abs(temp)
+                temp = self.cobyla.a[kk] * self.dxnew
+                ssum = self.resmax - confval[kk] + sum(temp)
+                ssumabs = self.resmax + abs(confval[kk]) + sum(abs(temp))
 
                 acca = ssumabs + (0.1 * abs(ssum))
                 accb = ssumabs + (0.2 * abs(ssum))
@@ -396,5 +396,5 @@ class Trstlp:
         if (self.mcon == self.cobyla.m):
             return self.L480_second_stage()
         
-        self.ifull = 0
+        self.ifull = False
         return self.FINISH

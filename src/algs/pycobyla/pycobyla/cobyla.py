@@ -273,7 +273,6 @@ class Cobyla:
                 return self.LL370
 
             jdrop = self._new_vertex_improve_acceptability(pareta)
-            breakpoint()
             if self._calcfc_iteration(pos=jdrop) == self.LL440:
                 return self.LL440
             self.ibrnch = True
@@ -310,7 +309,7 @@ class Cobyla:
         trstlp = Trstlp(self)
         self.ifull, self.dx = trstlp.run()
         
-        if self.ifull == 0:
+        if self.ifull == False:
             temp = sum(self.dx ** 2)
             cond = (temp < 0.25 * (self.rho ** 2)) 
             if cond:
@@ -444,7 +443,7 @@ class Cobyla:
     
     def L600_L620(self):
         # Return the best calculated values of the variables
-        if (self.ifull != 1):
+        if (self.ifull == False):
             # L600
             self.x = self.optimal_vertex
             self.fval = self.datmat[-1, -2]
