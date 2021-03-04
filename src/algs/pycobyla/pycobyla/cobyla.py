@@ -203,8 +203,7 @@ class Cobyla:
 
         # Make an error return if SIGI is a poor approximation to the inverse of
         # the leading N by N submatrix of SIG
-        sim_simi = np.matrix(self.sim) * np.matrix(self.simi)
-        #sim_simi = np.dot(self.sim, self.simi)
+        sim_simi = np.dot(self.sim, self.simi)
         error = abs(sim_simi - np.eye(self.n)).max()
         error = 0 if error < 0  else error
         if error > .1:
