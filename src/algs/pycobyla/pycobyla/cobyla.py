@@ -1,7 +1,10 @@
 import numpy as np
 
 from .trstlp import Trstlp
-    
+
+# Debug:
+# b cobyla.c:400 if nfvals >= 22
+# b self.L140, self.nfvals >= 22
 
 class Cobyla:
     # Stages 
@@ -70,6 +73,7 @@ class Cobyla:
 
     @property
     def data(self):
+        print(f'nfvals: {self.nfvals}')
         print(f'x: {self.x}')
         print(f'optimal_vertex: {self.optimal_vertex}')
         print(f'current_values: {self.current_values}')
@@ -243,10 +247,9 @@ class Cobyla:
         cvmaxm = max((0, *(ssum - temp)[:-1]))
 
         cond = (self.parmu * (cvmaxp - cvmaxm) > (2 * ssum[-1]))
-        dxsign = (-1 ** cond)
 
         # Update the elements of SIM and SIMI, and set the next X
-        self.dx *= dxsign
+        self.dx *= -1 if cond else 1
         self.sim[jdrop] = self.dx
 
         self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], self.dx)
