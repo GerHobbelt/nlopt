@@ -18,6 +18,10 @@ class Cobyla:
     ALPHA = 0.25
     BETA = 2.1
     GAMMA = 0.5
+
+    # Float precision
+    float = np.float
+    
     
     def __init__(self, x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
         n = len(x)
@@ -25,7 +29,7 @@ class Cobyla:
 
         self.n = n
         self.m = m
-        self.x = x
+        self.x = np.array(x, dtype=self.float)
         self.F = F
         self.C = C
         self.rhobeg = rhobeg
@@ -42,15 +46,15 @@ class Cobyla:
         self.nfvals = 0
 
         # simplex
-        self.sim = self.rho * np.eye(n)
+        self.sim = self.rho * np.eye(n, dtype=self.float)
         self.optimal_vertex = self.x.copy()
 
         # inverse simplex
-        self.simi = (1 / self.rho) * np.eye(n)
+        self.simi = (1 / self.rho) * np.eye(n, dtype=self.float)
 
         # for each vertex, m constrains, f, resmax values
         # last one for the best vertex
-        self.datmat = np.zeros((n + 1, m + 2))
+        self.datmat = np.zeros((n + 1, m + 2), dtype=self.float)
 
         self.a = None # (m+1) * n
 
@@ -85,7 +89,7 @@ class Cobyla:
         
     @property
     def current_values(self):
-        return np.array((*self.con, self.fval, self.resmax), dtype=np.float)
+        return np.array((*self.con, self.fval, self.resmax), dtype=self.float)
 
     
     @property
@@ -103,7 +107,6 @@ class Cobyla:
         self.ibrnch = True
 
         # LL370, LL440
-        breakpoint()
         stage = self.L140()
         while stage != self.FINISH:
             if stage == self.LL140:
@@ -134,7 +137,7 @@ class Cobyla:
             raise UserWarning('cobyla: user requested end of minimitzation')
 
         c_iter = (constrain(self.x) for constrain in self.C)
-        self.con = np.array(tuple(c_iter), dtype=np.float)
+        self.con = np.array(tuple(c_iter), dtype=self.float)
         self.resmax = max((0, *(-self.con)))
         
         

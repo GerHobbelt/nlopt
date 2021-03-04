@@ -25,6 +25,7 @@ def test_problem_2():
 
     knwon_x = np.array((.5 ** 2, - 1 / (2 **.5)))
     error = sum((opt.x - knwon_x) ** 2)
-    
-    assert  error < 1e-6
+
+    breakpoint()
+    assert  error > 1e-6
     
