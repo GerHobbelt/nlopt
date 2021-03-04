@@ -381,8 +381,7 @@ class Cobyla:
 
         lflag = None
         if mask.any():
-            temp = ((self.dx - self.sim) ** 2).sum(axis=1) if trured > 0 else self.veta
-            temp **= .5
+            temp = ((self.dx - self.sim) ** 2).sum(axis=1) ** .5 if trured > 0 else self.veta
             temp = temp[mask]
             idx = np.arange(len(mask))[mask]
             for j, ttemp in zip(idx, temp):
