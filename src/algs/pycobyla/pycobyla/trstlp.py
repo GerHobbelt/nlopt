@@ -322,18 +322,24 @@ class Trstlp:
         # can be attributed to computer rounding errors. First calculate the new
         # Lagrange multipliers.
         k = self.nact
-        temp = (self.z[k] * self.dxnew)
-        zdotw = sum(temp)
-        zdwabs = sum(abs(temp))
 
-        acca = zdwabs + (0.1 * abs(zdotw))
-        accb = zdwabs + (0.2 * abs(zdotw))
-        zdotw *= not((zdwabs >= acca) or (acca >= accb))
+        while True:
+            temp = (self.z[k] * self.dxnew)
+            zdotw = sum(temp)
+            zdwabs = sum(abs(temp))
+
+            acca = zdwabs + (0.1 * abs(zdotw))
+            accb = zdwabs + (0.2 * abs(zdotw))
+            zdotw *= not((zdwabs >= acca) or (acca >= accb))
         
-        self.vmultd[k] = zdotw / self.zdota[k]
-        if (k >= 1):
+            self.vmultd[k] = zdotw / self.zdota[k]
+            
+            if k < 1:
+                break
+
             kk = self.iact[k]
             self.dxnew -= self.vmultd[k] * self.cobyla.a[kk]
+            k -= 1
 
         if (self.mcon > self.cobyla.m):
             self.vmultd[self.nact] = max(0, self.vmultd[self.nact])

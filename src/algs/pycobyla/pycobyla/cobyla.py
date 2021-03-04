@@ -224,7 +224,7 @@ class Cobyla:
         # simplex is not acceptable
         self.vsig = 1 / (self.simi ** 2).sum(axis=0) ** .5 # col sum
         self.veta = (self.sim ** 2).sum(axis=1) ** .5 # row sum 
-        return not(np.any(self.vsig < parsig) or np.any(self.veta > pareta))
+        return not((self.vsig < parsig).any() or (self.veta > pareta).any())
 
     
     def _new_vertex_improve_acceptability(self, pareta):
