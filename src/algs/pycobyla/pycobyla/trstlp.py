@@ -234,7 +234,7 @@ class Trstlp:
         if (self.icon < self.nact):
             isave = self.iact[self.icon]
             vsave = self.vmultc[self.icon]
-            for k in range(self.icon, self.nact + 1):
+            for k in range(self.icon, self.nact):
                 kp = k + 1
                 kk = self.iact[kp]
                 
