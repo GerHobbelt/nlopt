@@ -2,9 +2,6 @@ import numpy as np
 
 from .trstlp import Trstlp
 
-# Debug:
-# b cobyla.c:400 if nfvals >= 22
-# b self.L140, self.nfvals >= 22
 
 class Cobyla:
     # Stages 
