@@ -185,8 +185,9 @@ class Cobyla:
                 phimin = phi_value
             else:
                 resmax_best = self.datmat[nbest, -1]
-                cond = (phi_value == phimin) and (self.parmu == 0) and (resmax_j < resmax_best)
+                cond = (phi_value == phimin) and (self.parmu == 0) and (resmax_j < resmax_best).any()
                 nbest = j if cond else nbest
+                
 
         # Switch the best vertex into pole position if it is not there already,
         # and also update SIM, SIMI and DATMAT
