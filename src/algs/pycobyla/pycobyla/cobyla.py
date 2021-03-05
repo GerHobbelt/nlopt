@@ -76,7 +76,7 @@ class Cobyla:
 
 
     @property
-    def data(self):
+    def data(self): # pragma: no cover
         print(f'nfvals: {self.nfvals}')
         print(f'x: {self.x}')
         print(f'optimal_vertex: {self.optimal_vertex}')
@@ -276,7 +276,7 @@ class Cobyla:
             # If a new vertex is needed to improve acceptability, then decide which
             # vertex to drop from simplex
             if (self.ibrnch == True) or (self.iflag == True):
-                return self.LL370
+                break
 
             jdrop = self._new_vertex_improve_acceptability(pareta)
             if self._calcfc_iteration(pos=jdrop) == self.LL440:
@@ -286,7 +286,7 @@ class Cobyla:
         return self.LL370
 
             
-    def L140_simplex_update(self):
+    def L140_simplex_update(self): # pragma: no cover
         parsig = self.parsig
         pareta = self.pareta
         
