@@ -189,3 +189,61 @@ def test_problem_9():
     )
     
     cobyla_tester(F, C, x, known_x)
+
+
+def test_problem_10():
+    '''
+    Test problem 10 (Test problem 10 (Hexagon area))
+    F(x0, x1, x2, x3, x4, x5, x6, x7, x8) = -((x[0] * x[3]) - (x[1] * x[2]) + (x[2] * x[8]) - (x[4] * x[8]) + (x[4] * x[7]) - (x[5] * x[6])) / 2
+    C1(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[2] ** 2) - (x[3] ** 2)
+    C2(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[8] ** 2)
+    C3(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[4] ** 2) - (x[5] ** 2)
+    C4(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[0] ** 2) - ((x[1] - x[8]) ** 2)
+    C5(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - ((x[0] - x[4]) ** 2) - ((x[1] - x[5]) ** 2)
+    C6(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - ((x[0] - x[6]) ** 2) - ((x[1] - x[7]) ** 2)
+    C7(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - ((x[2] - x[4]) ** 2) - ((x[3] - x[5]) ** 2)
+    C8(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - ((x[2] - x[6]) ** 2) - ((x[3] - x[7]) ** 2)
+    C9(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[6] ** 2) - ((x[7] - x[8]) ** 2)
+    c10(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= (x[0] * x[3]) - (x[1] * x[2])
+    C11(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= x[2] * x[8]
+    C12(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= - (x[4] * x[8])
+    C13(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= (x[4] * x[7]) - (x[5] * x[6])
+    C14(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= x[8]
+
+    This problem is taken from page 415 of Luenberger's book Applied
+    Nonlinear Programming. It is to maximize the area of a hexagon of
+    unit diameter
+    
+    '''
+
+    F = lambda x: -((x[0] * x[3]) - (x[1] * x[2]) + (x[2] * x[8]) - (x[4] * x[8]) + (x[4] * x[7]) - (x[5] * x[6])) / 2
+    c1 = lambda x: 1 - (x[2] ** 2) - (x[3] ** 2)
+    c2 = lambda x: 1 - (x[8] ** 2)
+    c3 = lambda x: 1 - (x[4] ** 2) - (x[5] ** 2)
+    c4 = lambda x: 1 - (x[0] ** 2) - ((x[1] - x[8]) ** 2)
+    c5 = lambda x: 1 - (x[8] ** 2)
+    c6 = lambda x: 1 - (x[8] ** 2)
+    c7 = lambda x: 1 - (x[8] ** 2)
+    c8 = lambda x: 1 - (x[8] ** 2)
+    c9 = lambda x: 1 - (x[8] ** 2)
+    c10 = lambda x: 1 - (x[8] ** 2)
+    c11 = lambda x: 1 - (x[8] ** 2)
+    c12 = lambda x: 1 - (x[8] ** 2)
+    c13 = lambda x: 1 - (x[8] ** 2)
+    c14 = lambda x: 1 - (x[8] ** 2)
+    C = (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14)
+    x = np.ones(9)
+    known_x = np.zeros(9)
+    
+    tempa = x[0] + x[2] + x[4] + x[6]
+    tempb = x[1] + x[3] + x[5] + x[7]
+    tempc = .5 / ((tempa * tempa + tempb * tempb) ** .5)
+    tempd = tempc * (3 ** .5)
+    known_x[0] = tempd * tempa + tempc * tempb
+    known_x[1] = tempd * tempb - tempc * tempa
+    known_x[2] = tempd * tempa - tempc * tempb
+    known_x[3] = tempd * tempb + tempc * tempa
+    for i in range(3):
+        known_x[i + 3] = known_x[i]
+        
+    cobyla_tester(F, C, x, known_x)
