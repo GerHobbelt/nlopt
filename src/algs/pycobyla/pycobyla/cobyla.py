@@ -264,7 +264,7 @@ class Cobyla:
     def L140(self):
         parsig = self.parsig
         pareta = self.pareta
-        
+
         while True:
             self._set_optimal_vertex()
             self._linear_coef()
