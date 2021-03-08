@@ -104,6 +104,7 @@ class Cobyla:
         self.ibrnch = True
 
         # LL370, LL440
+        breakpoint()
         stage = self.L140()
         while stage != self.FINISH:
             if stage == self.LL140:
