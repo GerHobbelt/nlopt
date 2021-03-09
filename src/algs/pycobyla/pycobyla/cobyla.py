@@ -232,12 +232,18 @@ class Cobyla:
 
     
     def _new_vertex_improve_acceptability(self, pareta):
-        veta_max, jdrop = max(zip(self.veta, range(self.n)))
-        vsig_max, jdrop = max(zip(self.vsig, range(self.n))) \
-            if (pareta >= veta_max) else (self.vsig[jdrop], jdrop)
-
+        jdrop, temp = -1, pareta
+        for j in range(self.n):
+            if self.veta[j] > temp:
+                jdrop, temp = j, self.veta[j]
+                
+        if jdrop == -1:
+            for j in range(self.n):
+                if self.vsig[j] < temp:
+                    jdrop, temp = j, self.vsig[j]
+        
         # Calculate the step to the new vertex and its sign
-        temp = self.GAMMA * self.rho * vsig_max
+        temp = self.GAMMA * self.rho * self.vsig[jdrop]
         self.dx = temp * self.simi[..., jdrop]
 
         ssum = np.dot(self.a, self.dx)
