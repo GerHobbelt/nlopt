@@ -138,8 +138,8 @@ class Trstlp:
             accb = zdvabs + (0.2 * (abs(zdotv)))
             if ((zdvabs < acca) and (acca < accb)):
                 temp = zdotv / self.zdota[k]
-                if ((temp > 0) and (self.iact[k] <= self.cobyla.m)):
-                    tempa = self.vmultc[self.nact] / temp
+                if ((temp > 0) and (self.iact[k] <= (self.cobyla.m - 1))):
+                    tempa = self.vmultc[k] / temp
                     if (ratio < 0) or (tempa < ratio):
                         ratio = tempa
                         self.iout = k # TODO: Drop this ???
@@ -347,7 +347,7 @@ class Trstlp:
         # Complete VMULTC by finding the new constraint residuals
         self.dxnew = self.dx + (self.step * self.sdirn)
         if ((self.mcon - 1) > self.nact):
-            confval = self.cobyla.current_values[:-1]
+            confval = self.cobyla.orig_con[:-1]
             for k in range(self.nact + 1, self.mcon):
                 kk = self.iact[k]
                 temp = self.cobyla.a[kk] * self.dxnew

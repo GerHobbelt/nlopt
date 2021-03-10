@@ -36,6 +36,7 @@ class Cobyla:
         
         # mpp (m constrains, fval, resmax)
         self.con = None # m constrains values
+        self.fx = 0
         self.fval = 0 
         self.resmax = 0
 
@@ -87,6 +88,15 @@ class Cobyla:
     @property
     def current_values(self):
         return np.array((*self.con, self.fval, self.resmax), dtype=self.float)
+
+    
+    @property
+    def orig_con(self):
+        '''
+        WARNING: self.fx is not self.fval
+        
+        '''
+        return np.array((*self.con, self.fx, self.resmax), dtype=self.float)
 
     
     @property
