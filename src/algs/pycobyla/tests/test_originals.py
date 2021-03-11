@@ -4,12 +4,16 @@ import pytest
 from pycobyla import Cobyla
 
 
-def cobyla_tester(F, C, x, known_x, rhobeg=.5, rhoend=1e-7, maxfun=3500):
+RHOBEG = .5
+RHOEND = 1e-8
+
+
+def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500):
     opt = Cobyla(x, F, C, rhobeg=rhobeg, rhoend=rhoend, maxfun=maxfun)
     opt.run()
-    if known_x is not None:
-        error = sum((opt.x - known_x) ** 2)
-        assert error < 1e-6
+    
+    error = sum((opt.x - known_x) ** 2)
+    assert error < 1e-6
     
     return opt
 
@@ -112,7 +116,7 @@ def test_problem_6():
     x = np.ones(2)
     known_x = np.array(((.5 ** .5), (.5 ** .5)))
 
-    cobyla_tester(F, C, x, known_x, maxfun=15000)
+    cobyla_tester(F, C, x, known_x)
 
     
 def test_problem_7():
@@ -235,20 +239,20 @@ def test_problem_10():
     C = (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14)
     x = np.ones(9)
 
-    opt = cobyla_tester(F, C, x, known_x=None, rhobeg=.5, rhoend=1e-7, maxfun=3500)
-    x = opt.x
+    opt = Cobyla(x, F, C, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500)
+    opt.run()
+
     known_x = np.zeros(9)
-    
-    tempa = x[0] + x[2] + x[4] + x[6]
-    tempb = x[1] + x[3] + x[5] + x[7]
+    tempa = opt.x[[0,2,4,6]].sum()
+    tempb = opt.x[[1,3,5,7]].sum()
     tempc = .5 / ((tempa * tempa + tempb * tempb) ** .5)
     tempd = tempc * (3 ** .5)
     known_x[0] = tempd * tempa + tempc * tempb
     known_x[1] = tempd * tempb - tempc * tempa
     known_x[2] = tempd * tempa - tempc * tempb
     known_x[3] = tempd * tempb + tempc * tempa
-    for i in range(1, 5):
-        known_x[i + 3] = known_x[i - 1]
 
-    error = sum((x - known_x) ** 2)
+    known_x[4:] = known_x[:5]
+
+    error = sum((opt.x - known_x) ** 2)
     assert error < 1e-6

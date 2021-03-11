@@ -1,6 +1,11 @@
+import logging
+
 import numpy as np
 
 from .trstlp import Trstlp
+
+
+logger = logging.getLogger(__name__)
 
 
 class Cobyla:
@@ -133,6 +138,7 @@ class Cobyla:
         if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)):
             # Error: COBYLA_USERABORT (rc = 1)
             self.L600_L620()
+            logger.error('maximum number of function evaluations reach')
             raise UserWarning('cobyla: maximum number of function evaluations reach')
 
         self.nfvals += 1
@@ -141,6 +147,7 @@ class Cobyla:
         except Exception as e:
             # Error: COBYLA_USERABORT (rc = 3)
             self.L600_L620()
+            logger.error('cobyla: user requested end of minimitzation')
             raise UserWarning('cobyla: user requested end of minimitzation')
 
         c_iter = (constrain(self.x) for constrain in self.C)
@@ -216,6 +223,7 @@ class Cobyla:
         if error > .1:
             # Error: COBYLA_MAXFUN (rc = 2)
             self.L600_L620()
+            logger.error('cobyla: rounding errors are becoming damaging')
             raise UserWarning('cobyla: rounding errors are becoming damaging')
         
         
