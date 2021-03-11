@@ -4,11 +4,12 @@ import pytest
 from pycobyla import Cobyla
 
 
-def cobyla_tester(F, C, x, knwon_x, rhobeg=.5, rhoend=1e-7, maxfun=3500):
+def cobyla_tester(F, C, x, known_x, rhobeg=.5, rhoend=1e-7, maxfun=3500):
     opt = Cobyla(x, F, C, rhobeg=rhobeg, rhoend=rhoend, maxfun=maxfun)
     opt.run()
-    error = sum((opt.x - knwon_x) ** 2)
-    assert error < 1e-6
+    if known_x is not None:
+        error = sum((opt.x - known_x) ** 2)
+        assert error < 1e-6
     
     return opt
 
@@ -233,6 +234,9 @@ def test_problem_10():
     c14 = lambda x: x[8]
     C = (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14)
     x = np.ones(9)
+
+    opt = cobyla_tester(F, C, x, known_x=None, rhobeg=.5, rhoend=1e-7, maxfun=3500)
+    x = opt.x
     known_x = np.zeros(9)
     
     tempa = x[0] + x[2] + x[4] + x[6]
@@ -243,7 +247,8 @@ def test_problem_10():
     known_x[1] = tempd * tempb - tempc * tempa
     known_x[2] = tempd * tempa - tempc * tempb
     known_x[3] = tempd * tempb + tempc * tempa
-    for i in range(3):
-        known_x[i + 3] = known_x[i]
-        
-    cobyla_tester(F, C, x, known_x)
+    for i in range(1, 5):
+        known_x[i + 3] = known_x[i - 1]
+
+    error = sum((x - known_x) ** 2)
+    assert error < 1e-6

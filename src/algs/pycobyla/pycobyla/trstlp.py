@@ -30,8 +30,8 @@ class Trstlp:
         self.resmax, self.icon = max(zip((0, *self.cobyla.con), (-1, *range(self.cobyla.m))))
         self.iact = np.arange(self.cobyla.m + 1)
         self.iact[-1] = -1
-        self.vmultc = np.array((*(self.resmax - self.cobyla.con), 0), dtype=np.float)
-        self.vmultd = np.zeros(self.cobyla.m + 1)
+        self.vmultc = np.array((*(self.resmax - self.cobyla.con), 0), dtype=np.float64)
+        self.vmultd = np.zeros(self.cobyla.m + 1, dtype=np.float64)
 
         # Data to return
         self.ifull = True

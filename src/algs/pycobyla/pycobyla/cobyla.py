@@ -17,7 +17,7 @@ class Cobyla:
     GAMMA = 0.5
 
     # Float precision
-    float = np.float
+    float = np.float64
     
     
     def __init__(self, x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
@@ -114,7 +114,6 @@ class Cobyla:
         self.ibrnch = True
 
         # LL370, LL440
-        breakpoint()
         stage = self.L140()
         while stage != self.FINISH:
             if stage == self.LL140:
