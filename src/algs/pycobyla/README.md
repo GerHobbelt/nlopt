@@ -29,7 +29,7 @@ After a clean installation, create a clean environment
 %> conda activate my-tfg
 ```
 
-### Clone the repository
+### Clone this repo
 ```sh
 %> mkdir -p jmsaxi-tfg/repos
 %> cd jmsaxi-tfg/repos
@@ -55,7 +55,7 @@ port, C tests are ported too. You can run the complete suite tests.
 
 #### Run original suite test with coverage 
 ```sh
-%> overage run --rcfile=coverage.cfg -m pytest tests
+%> coverage run --rcfile=coverage.cfg -m pytest tests
 %> coverage report
 %> coverage html
 %> firefox htmlcov/index.html
