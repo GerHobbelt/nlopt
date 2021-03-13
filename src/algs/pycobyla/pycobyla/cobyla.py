@@ -113,6 +113,16 @@ class Cobyla:
     def pareta(self):
         return self.BETA * self.rho
 
+
+    @property
+    def fmin(self):
+        return self.datmat[-1, -2]
+
+
+    @property
+    def res(self):
+        return self.datmat[-1, -1]
+
         
     def run(self):
         self.set_initial_simplex()
@@ -157,7 +167,7 @@ class Cobyla:
         
     def _set_datmat_step(self, jdrop):
         if jdrop < self.n:
-            if self.datmat[-1, -2] <= self.fval:
+            if self.fmin <= self.fval:
                 self.x[jdrop] = self.optimal_vertex[jdrop]
             else:
                 self.optimal_vertex[jdrop] = self.x[jdrop]
@@ -190,18 +200,18 @@ class Cobyla:
     def _set_optimal_vertex(self):
         # Identify the optimal vertex of the current simplex
         nbest = None
-        phi = lambda fx, resmax: fx + (self.parmu * resmax)
+        phi = lambda fx, res: fx + (self.parmu * res)
         
-        phimin = phi(fx=self.datmat[-1, -2], resmax=self.datmat[-1, -1])
+        phimin = phi(fx=self.fmin, res=self.res)
         for j, row in zip(range(self.n), self.datmat):
             *_, fx_j, resmax_j = row
             phi_value = phi(fx_j, resmax_j)
             if phi_value < phimin:
                 nbest = j
                 phimin = phi_value
-            else:
+            elif ((phi_value == phimin) and (self.parmu == 0)):
                 resmax_best = self.datmat[nbest, -1]
-                cond = (phi_value == phimin) and (self.parmu == 0) and (resmax_j < resmax_best).any()
+                cond = (resmax_j < resmax_best).any()
                 nbest = j if cond else nbest
                 
 
@@ -285,29 +295,7 @@ class Cobyla:
         return jdrop
 
 
-    def L140(self):
-        parsig = self.parsig
-        pareta = self.pareta
-
-        while True:
-            self._set_optimal_vertex()
-            self._linear_coef()
-            self.iflag = self._is_acceptable_simplex(parsig, pareta)
-
-            # If a new vertex is needed to improve acceptability, then decide which
-            # vertex to drop from simplex
-            if (self.ibrnch == True) or (self.iflag == True):
-                break
-
-            jdrop = self._new_vertex_improve_acceptability(pareta)
-            if self._calcfc_iteration(pos=jdrop) == self.LL440:
-                return self.LL440
-            self.ibrnch = True
-
-        return self.LL370
-
-            
-    def L140_simplex_update(self): # pragma: no cover
+    def L140(self): # pragma: no cover
         parsig = self.parsig
         pareta = self.pareta
         
@@ -320,11 +308,12 @@ class Cobyla:
         if (self.ibrnch == True) or (self.iflag == True):
             return self.LL370
 
-        self._new_vertex_improve_acceptability(pareta)
-        if self._calcfc_iteration() == self.LL440:
-            return self.LL440
+        jdrop = self._new_vertex_improve_acceptability(pareta)
         
+        self._calcfc()
+        self.datmat[jdrop] = self.current_values
         self.ibrnch = True
+        
         self._set_optimal_vertex()
         self._linear_coef()
         self.iflag = self._is_acceptable_simplex(parsig, pareta)
@@ -355,14 +344,14 @@ class Cobyla:
         # reductions in the merit function and the maximum constraint violation
         # respectively
         barmu = 0
-        self.prerec = self.datmat[-1, -1] - resnew
+        self.prerec = self.res - resnew
         if self.prerec > 0 :
             barmu = fsum / self.prerec
 
         if self.parmu < (barmu * 1.5):
             self.parmu = barmu * 2
-            res = self.datmat[-1, -1]
-            phi = self.datmat[-1, -2] + (self.parmu * self.datmat[-1, -1])
+            res = self.res
+            phi = self.fmin + (self.parmu * res)
             phi_values = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
             for phi_val, res_val in zip(phi_values, self.datmat[:-1, -1]):
                 if (phi_val < phi):
@@ -376,19 +365,18 @@ class Cobyla:
         # actual reduction in the merit function
         self.x = self.optimal_vertex + self.dx
         self.ibrnch = True
-        if self._calcfc_iteration() == self.LL440:
-            return self.LL440
         
-        return self.LL140
-
+        self._calcfc()
+        return self.LL440
+    
         
     def L440(self):
-        vmold = self.datmat[-1, -2] + (self.parmu * self.datmat[-1, -1])
+        vmold = self.fmin + (self.parmu * self.res)
         vmnew = self.fval + (self.parmu * self.resmax)
         trured = vmold - vmnew
-        if (self.parmu == 0) and (self.fval == self.datmat[-1, -2]):
+        if (self.parmu == 0) and (self.fval == self.fmin):
             self.prerem = self.prerec
-            trured = self.datmat[-1, -1] - self.resmax
+            trured = self.res - self.resmax
         
         # Begin the operations that decide whether x(*) should replace one of the
         # vertices of the current simplex, the change being mandatory if TRURED is
@@ -471,8 +459,8 @@ class Cobyla:
         if (self.ifull == False):
             # L600
             self.x = self.optimal_vertex
-            self.fval = self.datmat[-1, -2]
-            self.resmax = self.datmat[-1, -1]
+            self.fval = self.fmin
+            self.resmax = self.res
 
         # L620
         self.maxfun = self.nfvals

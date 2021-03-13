@@ -38,7 +38,7 @@ def test_problem_2():
     Test problem 2 (2D unit circle calculation)
 
     F(x, y) = x * y
-    C1(x, y) = 1 - x^2 - y^2 >= 0 
+    C1(x, y) = 1 - x^2 - y^2 >= 0
 
     '''
     F = lambda x: (x[0]* x[1]) 
@@ -50,13 +50,12 @@ def test_problem_2():
     cobyla_tester(F, C, x, known_x)
 
 
-
 def test_problem_3():
     '''
     Test problem 3 (3D ellipsoid calculation)
 
     F(x, y, z) = x
-    C1(x, y, z) = 1 - x^2 - (2 * y^2) - (3 * z^2) 
+    C1(x, y, z) = 1 - x^2 - (2 * y^2) - (3 * z^2) >= 0
 
     '''
     F = lambda x: x[0]* x[1] * x[2]
@@ -102,8 +101,8 @@ def test_problem_6():
     '''
     Test problem 6 (Equation (9.1.15) in Fletcher's book)
     F(x, y) = - x - y
-    C1(x, y) >= z -x^2
-    C2(x, y) >= 1 - x^2 - y^2
+    C1(x, y) = y -x^2 >= 0
+    C2(x, y) = 1 - x^2 - y^2 >= 0
 
     This problem is taken from Fletcher's book Practical Methods of
     Optimization and has the equation number (9.1.15)
@@ -123,8 +122,8 @@ def test_problem_7():
     '''
     Test problem 7 (Equation (14.4.2) in Fletcher's book)
     F(x, y, z) = z
-    C1(x, y, z) >= (5 * x) - y + z
-    C2(x, y, z) >= z - (5 * x) - y
+    C1(x, y, z) = (5 * x) - y + z >= 0
+    C2(x, y, z) = z - (5 * x) - y >= 0
 
     This problem is taken from Fletcher's book Practical Methods of
     Optimization and has the equation number (14.4.2)
@@ -145,9 +144,9 @@ def test_problem_8():
     '''
     Test problem 8 (Rosen-Suzuki)
     F(x, y, z, v) = x^2 + y^2 + (2 * (z^2)) + v^2 - 5*x - 5*y - 21*z + 7v
-    C1(x, y, z, v) >= 8 - x^2 - y^2 - z^3 - v^4 - x + y - z + v
-    C2(x, y, z, v) >= 10 - x^2 - (2 * y^2) - z^2 - (2 * v^2) + x + v
-    C3(x, y, z, v) >= 5 - (2 * x^2) - y^2 - z^2 - (2 * x) + y + v
+    C1(x, y, z, v) = 8 - x^2 - y^2 - z^3 - v^4 - x + y - z + v >= 0
+    C2(x, y, z, v) = 10 - x^2 - (2 * y^2) - z^2 - (2 * v^2) + x + v >= 0
+    C3(x, y, z, v) = 5 - (2 * x^2) - y^2 - z^2 - (2 * x) + y + v >= 0
 
     This problem is taken from page 66 of Hock and Schittkowski's book Test
     Examples for Nonlinear Programming Codes. It is their test problem
@@ -169,10 +168,10 @@ def test_problem_9():
     '''
     Test problem 9 (Rosen-Suzuki)
     F(x0, x1, x2, x3, x4, x5. x6) =
-    C1(x0, x1, x2, x3, x4, x5. x6) >= 
-    C2(x0, x1, x2, x3, x4, x5. x6) >= 
-    C3(x0, x1, x2, x3, x4, x5. x6) >=
-    C4(x0, x1, x2, x3, x4, x5. x6) >=
+    C1(x0, x1, x2, x3, x4, x5. x6) = >= 
+    C2(x0, x1, x2, x3, x4, x5. x6) = >= 
+    C3(x0, x1, x2, x3, x4, x5. x6) = >=
+    C4(x0, x1, x2, x3, x4, x5. x6) = >=
 
     This problem is taken from page 111 of Hock and Schittkowski's
     book Test Examples for Nonlinear Programming Codes. It is their
@@ -199,21 +198,21 @@ def test_problem_9():
 def test_problem_10():
     '''
     Test problem 10 (Test problem 10 (Hexagon area))
-    F(x0, x1, x2, x3, x4, x5, x6, x7, x8) = -((x[0] * x[3]) - (x[1] * x[2]) + (x[2] * x[8]) - (x[4] * x[8]) + (x[4] * x[7]) - (x[5] * x[6])) / 2
-    C1(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[2] ** 2) - (x[3] ** 2)
-    C2(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[8] ** 2)
-    C3(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[4] ** 2) - (x[5] ** 2)
-    C4(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[0] ** 2) - ((x[1] - x[8]) ** 2)
-    C5(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - ((x[0] - x[4]) ** 2) - ((x[1] - x[5]) ** 2)
-    C6(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - ((x[0] - x[6]) ** 2) - ((x[1] - x[7]) ** 2)
-    C7(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - ((x[2] - x[4]) ** 2) - ((x[3] - x[5]) ** 2)
-    C8(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - ((x[2] - x[6]) ** 2) - ((x[3] - x[7]) ** 2)
-    C9(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= 1 - (x[6] ** 2) - ((x[7] - x[8]) ** 2)
-    c10(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= (x[0] * x[3]) - (x[1] * x[2])
-    C11(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= x[2] * x[8]
-    C12(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= - (x[4] * x[8])
-    C13(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= (x[4] * x[7]) - (x[5] * x[6])
-    C14(x0, x1, x2, x3, x4, x5, x6, x7, x8) >= x[8]
+    F(x0, x1, x2, x3, x4, x5, x6, x7, x8) = -((x0 * x3) - (x1 * x2) + (x2 * x8) - (x4 * x8) + (x4 * x7) - (x5 * x6)) / 2
+    C1(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - (x2 ** 2) - (x3 ** 2) >= 0
+    C2(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - (x8 ** 2) >= 0
+    C3(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - (x4 ** 2) - (x5 ** 2) >= 0
+    C4(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - (x0 ** 2) - ((x1 - x8) ** 2) >= 0
+    C5(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - ((x0 - x4) ** 2) - ((x1 - x5) ** 2) >= 0
+    C6(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - ((x0 - x6) ** 2) - ((x1 - x7) ** 2) >= 0
+    C7(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - ((x2 - x4) ** 2) - ((x3 - x5) ** 2) >= 0
+    C8(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - ((x2 - x6) ** 2) - ((x3 - x7) ** 2) >= 0
+    C9(x0, x1, x2, x3, x4, x5, x6, x7, x8) = 1 - (x6 ** 2) - ((x7 - x8) ** 2) >= 0
+    c10(x0, x1, x2, x3, x4, x5, x6, x7, x8) = (x0 * x3) - (x1 * x2) >= 0
+    C11(x0, x1, x2, x3, x4, x5, x6, x7, x8) = x2 * x8 >= 0
+    C12(x0, x1, x2, x3, x4, x5, x6, x7, x8) = - (x4 * x8) >= 0
+    C13(x0, x1, x2, x3, x4, x5, x6, x7, x8) = (x4 * x7) - (x5 * x6) >= 0
+    C14(x0, x1, x2, x3, x4, x5, x6, x7, x8) = x8 >= 0
 
     This problem is taken from page 415 of Luenberger's book Applied
     Nonlinear Programming. It is to maximize the area of a hexagon of
