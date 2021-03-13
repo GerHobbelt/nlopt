@@ -13,7 +13,7 @@ def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500):
     opt.run()
     
     error = sum((opt.x - known_x) ** 2)
-    assert error < 1e-6
+    assert error < 1e-11
     
     return opt
 

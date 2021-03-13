@@ -9,10 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class Cobyla:
-    # Stages 
-    LL140 = 140
-    LL370 = 370
-    LL440 = 440
     FINISH = 0
 
     # Constants
@@ -128,24 +124,15 @@ class Cobyla:
         self.set_initial_simplex()
         self.ibrnch = True
 
-        # LL370, LL440
-        stage = self.L140()
-        while stage != self.FINISH:
-            if stage == self.LL140:
-                # LL370, LL440
-                mth = self.L140
-            elif stage == self.LL370:
-                # LL140, LL440, FINISH
-                mth = self.L370
-            else:
-                # LL140, FINISH
-                mth = self.L440
+        self.L140()
+        while True:
+            self.L140()
+            if self.L370() == self.FINISH:
+                break
 
-            stage = mth()    
-        
-        
+            
     def _calcfc(self):
-        if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)):
+        if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)): # pragma: no cover
             # Error: COBYLA_USERABORT (rc = 1)
             self.L600_L620()
             logger.error('maximum number of function evaluations reach')
@@ -154,7 +141,7 @@ class Cobyla:
         self.nfvals += 1
         try:
             self.fval = self.F(self.x)
-        except Exception as e:
+        except Exception as e: # pragma: no cover
             # Error: COBYLA_USERABORT (rc = 3)
             self.L600_L620()
             logger.error('cobyla: user requested end of minimitzation')
@@ -188,13 +175,6 @@ class Cobyla:
             self._calcfc()
             self.datmat[jdrop] = self.current_values
             self._set_datmat_step(jdrop)
-
-            
-    def _calcfc_iteration(self, pos=-1):
-        self._calcfc()
-        if self.ibrnch == True:
-            return self.LL440
-        self.datmat[pos] = self.current_values
 
 
     def _set_optimal_vertex(self):
@@ -230,7 +210,7 @@ class Cobyla:
         sim_simi = np.dot(self.sim, self.simi)
         error = abs(sim_simi - np.eye(self.n)).max()
         error = 0 if error < 0  else error
-        if error > .1:
+        if error > .1: # pragma: no cover
             # Error: COBYLA_MAXFUN (rc = 2)
             self.L600_L620()
             logger.error('cobyla: rounding errors are becoming damaging')
@@ -306,7 +286,7 @@ class Cobyla:
         # If a new vertex is needed to improve acceptability, then decide which
         # vertex to drop from simplex
         if (self.ibrnch == True) or (self.iflag == True):
-            return self.LL370
+            return
 
         jdrop = self._new_vertex_improve_acceptability(pareta)
         
@@ -317,7 +297,6 @@ class Cobyla:
         self._set_optimal_vertex()
         self._linear_coef()
         self.iflag = self._is_acceptable_simplex(parsig, pareta)
-        return self.LL370
         
         
     def L370(self):
@@ -355,9 +334,9 @@ class Cobyla:
             phi_values = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
             for phi_val, res_val in zip(phi_values, self.datmat[:-1, -1]):
                 if (phi_val < phi):
-                    return self.LL140
+                    return
                 if (phi_val == phi) and (self.parmu == 0) and (res_val < res):
-                    return self.LL140
+                    return
 
         self.prerem = (self.parmu * self.prerec) - fsum
 
@@ -367,7 +346,7 @@ class Cobyla:
         self.ibrnch = True
         
         self._calcfc()
-        return self.LL440
+        return self.L440()
     
         
     def L440(self):
@@ -420,7 +399,7 @@ class Cobyla:
 
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= self.prerem * 0.1):
-            return self.LL140
+            return
 
         return self.L550()
 
@@ -428,7 +407,7 @@ class Cobyla:
     def L550(self):
         if (self.iflag == False):
             self.ibrnch = False
-            return self.LL140
+            return
             
         # Otherwise reduce RHO if it is not at its least value and reset PARMU
         if (self.rho > self.rhoend):
@@ -449,7 +428,7 @@ class Cobyla:
                     self.parmu = 0
                 elif ((cmax - cmin) < (self.parmu * denom)): 
                     self.parmu = (cmax - cmin) / denom
-            return self.LL140
+            return
 
         return self.L600_L620()
 
