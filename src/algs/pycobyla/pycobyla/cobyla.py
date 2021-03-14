@@ -30,9 +30,8 @@ class Cobyla:
         self.x = np.array(x, dtype=self.float)
         self.F = F
         self.C = C
-        self.rhobeg = rhobeg
         self.rhoend = rhoend
-        self.rho = self.rhobeg
+        self.rho = rhobeg
         self.maxfun = maxfun
         
         # mpp (m constrains, fval, resmax)
@@ -59,19 +58,13 @@ class Cobyla:
 
         self.vsig = None
         self.veta = None
-        self.dx = None
 
         # flags
         self.ibrnch = False
         self.iflag = False # Acceptable simplex
-        self.ifull = None
 
         # Params
         self.parmu = 0
-
-        # Others
-        self.prerec = None
-        self.prerem = None
 
 
     @property
@@ -251,9 +244,9 @@ class Cobyla:
         
         # Calculate the step to the new vertex and its sign
         temp = self.GAMMA * self.rho * self.vsig[jdrop]
-        self.dx = temp * self.simi[..., jdrop]
+        dx = temp * self.simi[..., jdrop]
 
-        ssum = np.dot(self.a, self.dx)
+        ssum = np.dot(self.a, dx)
         temp = self.datmat[-1, :-1]
 
         cvmaxp = max((0, *(-ssum - temp)[:-1]))
@@ -262,16 +255,16 @@ class Cobyla:
         cond = (self.parmu * (cvmaxp - cvmaxm) > (2 * ssum[-1]))
 
         # Update the elements of SIM and SIMI, and set the next X
-        self.dx *= -1 if cond else 1
-        self.sim[jdrop] = self.dx
+        dx = -dx if cond else dx
+        self.sim[jdrop] = dx
 
-        self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], self.dx)
-        temp = np.dot(self.dx, self.simi)
+        self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], dx)
+        temp = np.dot(dx, self.simi)
         target = self.simi[..., jdrop].copy()
         self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
         self.simi[..., jdrop] = target
 
-        self.x = self.optimal_vertex + self.dx
+        self.x = self.optimal_vertex + dx
         return jdrop
 
 
@@ -302,19 +295,19 @@ class Cobyla:
     def L370(self):
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
         trstlp = Trstlp(self)
-        self.ifull, self.dx = trstlp.run()
+        ifull, dx = trstlp.run()
         
-        if self.ifull == False:
-            temp = sum(self.dx ** 2)
+        if ifull == False:
+            temp = sum(dx ** 2)
             cond = (temp < 0.25 * (self.rho ** 2)) 
             if cond:
                 self.ibrnch = True
-                return self.L550()
+                return self.L550(ifull)
 
         # Predict the change to F and the new maximum constraint violation if the
         # variables are altered from x(0) to x(0)+DX
         self.fval = 0
-        temp = (self.a * self.dx).sum(axis=1)
+        temp = (self.a * dx).sum(axis=1)
         csum, fsum = self.con - temp[:-1], self.fval - temp[-1]
         resnew = max((0, *csum))
 
@@ -323,9 +316,9 @@ class Cobyla:
         # reductions in the merit function and the maximum constraint violation
         # respectively
         barmu = 0
-        self.prerec = self.res - resnew
-        if self.prerec > 0 :
-            barmu = fsum / self.prerec
+        prerec = self.res - resnew
+        if prerec > 0 :
+            barmu = fsum / prerec
 
         if self.parmu < (barmu * 1.5):
             self.parmu = barmu * 2
@@ -338,23 +331,23 @@ class Cobyla:
                 if (phi_val == phi) and (self.parmu == 0) and (res_val < res):
                     return
 
-        self.prerem = (self.parmu * self.prerec) - fsum
+        prerem = (self.parmu * prerec) - fsum
 
         # Calculate the constraint and objective functions at x(*). Then find the 
         # actual reduction in the merit function
-        self.x = self.optimal_vertex + self.dx
+        self.x = self.optimal_vertex + dx
         self.ibrnch = True
         
         self._calcfc()
-        return self.L440()
+        return self.L440(ifull, dx, prerec, prerem)
     
         
-    def L440(self):
+    def L440(self, ifull, dx, prerec, prerem):
         vmold = self.fmin + (self.parmu * self.res)
         vmnew = self.fval + (self.parmu * self.resmax)
         trured = vmold - vmnew
         if (self.parmu == 0) and (self.fval == self.fmin):
-            self.prerem = self.prerec
+            prerem = prerec
             trured = self.res - self.resmax
         
         # Begin the operations that decide whether x(*) should replace one of the
@@ -363,7 +356,7 @@ class Cobyla:
         # replaced
         jdrop = -1
         ratio = 1 if (trured <= 0) else 0
-        temp = abs(np.dot(self.dx, self.simi))
+        temp = abs(np.dot(dx, self.simi))
         for j, value in zip(range(self.n), temp):
             if value > ratio:
                 ratio, jdrop = value, j
@@ -374,7 +367,7 @@ class Cobyla:
 
         lflag = None
         if mask.any():
-            temp = ((self.dx - self.sim) ** 2).sum(axis=1) ** .5 if trured > 0 else self.veta
+            temp = ((dx - self.sim) ** 2).sum(axis=1) ** .5 if trured > 0 else self.veta
             temp = temp[mask]
             idx = np.arange(len(mask))[mask]
             for j, ttemp in zip(idx, temp):
@@ -385,26 +378,26 @@ class Cobyla:
         if lflag is not None:
             jdrop = lflag
         if jdrop == -1:
-            return self.L550()
+            return self.L550(ifull)
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
-        self.sim[jdrop] = self.dx
-        temp = np.dot(self.dx, self.simi[..., jdrop])
+        self.sim[jdrop] = dx
+        temp = np.dot(dx, self.simi[..., jdrop])
         self.simi[..., jdrop] /= temp
         target = self.simi[..., jdrop].copy()
-        temp = np.dot(self.dx, self.simi)
+        temp = np.dot(dx, self.simi)
         self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
         self.simi[..., jdrop] = target
         self.datmat[jdrop] = np.array((*self.con, self.fval, self.resmax))
 
         # Branch back for further iterations with the current RHO
-        if (trured > 0) and (trured >= self.prerem * 0.1):
+        if (trured > 0) and (trured >= prerem * 0.1):
             return
 
-        return self.L550()
+        return self.L550(ifull)
 
         
-    def L550(self):
+    def L550(self, ifull):
         if (self.iflag == False):
             self.ibrnch = False
             return
@@ -430,12 +423,12 @@ class Cobyla:
                     self.parmu = (cmax - cmin) / denom
             return
 
-        return self.L600_L620()
+        return self.L600_L620(ifull)
 
     
-    def L600_L620(self):
+    def L600_L620(self, ifull=False):
         # Return the best calculated values of the variables
-        if (self.ifull == False):
+        if (ifull == False):
             # L600
             self.x = self.optimal_vertex
             self.fval = self.fmin
