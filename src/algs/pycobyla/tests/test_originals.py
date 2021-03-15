@@ -1,20 +1,32 @@
+import logging
+
 import numpy as np
 import pytest
 
 from pycobyla import Cobyla
 
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
 RHOBEG = .5
 RHOEND = 1e-8
 
 
+def opt_info(opt):
+    logger.info(f'nfavals: {opt.nfvals}')
+    logger.info(f'x: {opt.x}')
+    
+    
 def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500):
     opt = Cobyla(x, F, C, rhobeg=rhobeg, rhoend=rhoend, maxfun=maxfun)
     opt.run()
+    opt_info(opt)
     
     error = sum((opt.x - known_x) ** 2)
     assert error < 1e-11
-    
+
     return opt
 
 
