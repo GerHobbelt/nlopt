@@ -68,3 +68,28 @@ def test_problem_2_gaussian_2d_random_mu():
     x = np.ones(2)
     
     cobyla_tester(G, C, x, mu)
+
+
+def _test_problem_2_gaussian_2d_random_mu_bis():
+    '''   
+    C1(x, y) = 1 - x >= 0
+    C2(x, y) = 1 + x >= 0
+    C3(x, y) = 1 - y >= 0
+    C4(x, y) = 1 + y >= 0
+    
+    '''
+    mu_1 = np.random.random(2)
+    mu_2 = np.random.random(2)
+    G1 = functools.partial(neg_gaussian, mu=mu_1, A=1)
+    G2 = functools.partial(neg_gaussian, mu=mu_2, A=2)
+    G = lambda x: G1(x) + G2(x)
+    
+    c1 = lambda x: 1 - x[0]
+    c2 = lambda x: 1 + x[0]
+    c3 = lambda x: 1 - x[1]
+    c4 = lambda x: 1 + x[1]
+    
+    C = (c1, c2, c3, c4)
+    x = np.ones(2)
+    
+    cobyla_tester(G, C, x, mu_2)

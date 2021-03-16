@@ -267,3 +267,5 @@ def test_problem_10():
 
     error = sum((opt.x - known_x) ** 2)
     assert error < 1e-6
+
+    opt_info(opt)

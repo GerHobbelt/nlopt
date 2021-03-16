@@ -146,17 +146,16 @@ class Cobyla:
         
         
     def _set_datmat_step(self, jdrop):
-        if jdrop < self.n:
-            if self.fmin <= self.fval:
-                self.x[jdrop] = self.optimal_vertex[jdrop]
-            else:
-                self.optimal_vertex[jdrop] = self.x[jdrop]
-                self.datmat[jdrop] = self.datmat[-1]
-                self.datmat[-1,] = self.current_values
+        if self.fmin <= self.fval:
+            self.x[jdrop] = self.optimal_vertex[jdrop] # restores the previous values
+        else:
+            self.optimal_vertex[jdrop] = self.x[jdrop]
+            self.datmat[jdrop] = self.datmat[-1]
+            self.datmat[-1] = self.current_values
 
-                self.sim[:(jdrop + 1), jdrop] = -self.rho
-                for row in range(jdrop + 1):
-                    self.simi[row, jdrop] = -sum(self.simi[row, :(jdrop + 1)])
+            self.sim[:(jdrop + 1), jdrop] = -self.rho
+            for row in range(jdrop + 1):
+                self.simi[row, jdrop] = -sum(self.simi[row, :(jdrop + 1)])
         
     
     def set_initial_simplex(self):
@@ -174,7 +173,7 @@ class Cobyla:
         # Identify the optimal vertex of the current simplex
         nbest = None
         phi = lambda fx, res: fx + (self.parmu * res)
-        
+
         phimin = phi(fx=self.fmin, res=self.res)
         for j, row in zip(range(self.n), self.datmat):
             *_, fx_j, resmax_j = row
