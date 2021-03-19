@@ -1,3 +1,4 @@
+import sys
 import logging
 
 import numpy as np
@@ -7,7 +8,10 @@ from pycobyla import Cobyla
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.propagate = False
+stream_handler = logging.StreamHandler(sys.stdout)
+logger.addHandler(stream_handler)
+logger.setLevel(logging.WARNING)
 
 
 RHOBEG = .5

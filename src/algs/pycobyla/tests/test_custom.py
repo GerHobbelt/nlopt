@@ -19,6 +19,10 @@ def gaussian(x, mu=None, sig=None, A=1):
 
 def neg_gaussian(x, mu=None, sig=None, A=1):
     return -gaussian(x, mu=mu, sig=sig, A=A)
+
+
+def con(x, a=1, b=1):
+    return ((x[0] / a) ** 2) + ((x[1] / b) ** 2) ** .5 
         
 
 def test_problem_1_gaussian_2d():
@@ -70,26 +74,50 @@ def test_problem_2_gaussian_2d_random_mu():
     cobyla_tester(G, C, x, mu)
 
 
-def _test_problem_2_gaussian_2d_random_mu_bis():
-    '''   
-    C1(x, y) = 1 - x >= 0
-    C2(x, y) = 1 + x >= 0
-    C3(x, y) = 1 - y >= 0
-    C4(x, y) = 1 + y >= 0
+def test_problem_3_two_gaussian_2d():
+    '''
+    mu1 = (-0.5, -0.5)
+    mu2 = (0.5, 0.5)
+    sig1 = sig2 = (1, 1)
+    
+    C1(x, y) = 5 - x >= 0
+    C2(x, y) = 5 + x >= 0
+    C3(x, y) = 5 - y >= 0
+    C4(x, y) = 5 + y >= 0
     
     '''
-    mu_1 = np.random.random(2)
-    mu_2 = np.random.random(2)
-    G1 = functools.partial(neg_gaussian, mu=mu_1, A=1)
-    G2 = functools.partial(neg_gaussian, mu=mu_2, A=2)
-    G = lambda x: G1(x) + G2(x)
+    mu1 = np.array((-2.5, -2.5))
+    mu2 = np.array((2.5, 2.5))
     
-    c1 = lambda x: 1 - x[0]
-    c2 = lambda x: 1 + x[0]
-    c3 = lambda x: 1 - x[1]
-    c4 = lambda x: 1 + x[1]
+    G1 = functools.partial(neg_gaussian, mu=mu1, A=1)
+    G2 = functools.partial(neg_gaussian, mu=mu2, A=2)
+    G = lambda x: G1(x) + G2(x)
+
+    k = 5
+    c1 = lambda x: k - x[0]
+    c2 = lambda x: k + x[0]
+    c3 = lambda x: k - x[1]
+    c4 = lambda x: k + x[1]
     
     C = (c1, c2, c3, c4)
     x = np.ones(2)
     
-    cobyla_tester(G, C, x, mu_2)
+    cobyla_tester(G, C, x, mu2)
+    
+@pytest.mark.skip(reason='')
+def test_problem_4_con():
+    '''
+    F(x, y) = ((x/a)^2 + (y/b)^2)^.5
+    C1(x, y) = 5 + x >= 0
+    C2(x, y) = 5 + y >= 0
+    '''
+    k = 5
+    c1 = lambda x: k + x[0]
+    c2 = lambda x: k + x[1]
+
+    F = con
+    C = (c1, c2)
+    x = np.ones(2)
+    known_x = np.zeros(2)
+
+    cobyla_tester(F, C, x, known_x)
