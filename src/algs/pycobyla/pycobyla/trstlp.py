@@ -18,10 +18,7 @@ class Trstlp:
         self.optold = 0
         self.nact = -1
         self.nactx = -1
-        self.sp = None
-        self.spabs = None
-        self.tot = None
-        self.iout = None # TODO To drop?
+        self.iout = None # TODO Drop this?
         self.stpful = None
         self.step = None
         self.dxnew = None # n
@@ -81,36 +78,35 @@ class Trstlp:
 
         kk = self.iact[self.icon]
         self.dxnew = self.cobyla.a[kk].copy()
-        self.tot = 0
+        tot = 0
 
         for k in range(self.cobyla.n - 1, -1, -1):
             if k > self.nact:
                 temp = self.z[k] * self.dxnew
-                self.sp = sum(temp)
-                self.spabs = sum(abs(temp))
+                sp = sum(temp)
+                spabs = sum(abs(temp))
 
-                acca = self.spabs + (0.1 * abs(self.sp))
-                accb = self.spabs + (0.2 * abs(self.sp))
+                acca = spabs + (0.1 * abs(sp))
+                accb = spabs + (0.2 * abs(sp))
                 
-                cond = ((self.spabs >= acca) or (acca >= accb))
-                self.sp = 0 if cond else self.sp
-                if self.tot == 0:
-                    self.tot = self.sp 
+                cond = ((spabs >= acca) or (acca >= accb))
+                sp = 0 if cond else sp
+                if tot == 0:
+                    tot = sp 
                 else:
-                    temp = ((self.sp ** 2) + (self.tot ** 2)) ** 0.5
-                    alpha = self.sp / temp
-                    beta = self.tot / temp
-                    self.tot = temp
+                    temp = ((sp ** 2) + (tot ** 2)) ** 0.5
+                    alpha = sp / temp
+                    beta = tot / temp
+                    tot = temp
                     self.z[k], self.z[k + 1] = \
                         (alpha * self.z[k]) + (beta * self.z[k + 1]), \
                         (alpha * self.z[k + 1]) - (beta * self.z[k])
                 
         # Add the new constraint if this can be done without a deletion from the
         # active set
-
-        if (self.tot != 0):
+        if (tot != 0):
             self.nact += 1
-            self.zdota[self.nact] = self.tot
+            self.zdota[self.nact] = tot
             self.vmultc[self.icon] = self.vmultc[self.nact]
             self.vmultc[self.nact] = 0
             return self.L210(kk)
