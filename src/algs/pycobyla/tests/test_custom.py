@@ -21,11 +21,15 @@ def neg_gaussian(x, mu=None, sig=None, A=1):
     return -gaussian(x, mu=mu, sig=sig, A=A)
 
 
-def con(x, a=1, b=1):
-    return ((x[0] / a) ** 2) + ((x[1] / b) ** 2) ** .5 
+def cone(x, a=1, b=1):
+    return (((x[0] / a) ** 2) + ((x[1] / b) ** 2)) ** .5
+
+
+def paraboloid(x, a=1, b=1):
+    return ((x[0] / a) ** 2) + ((x[1] / b) ** 2)
         
 
-def test_problem_1_gaussian_2d():
+def test_problem_gaussian_2d():
     '''
     Test gaussian 2d Gaussian with mu=(0,0), sig=(1,1) 
 
@@ -50,7 +54,7 @@ def test_problem_1_gaussian_2d():
     cobyla_tester(G, C, x, mu)
 
 
-def test_problem_2_gaussian_2d_random_mu():
+def test_problem_gaussian_2d_random_mu():
     '''
     Test gaussian 2d Gaussian with mu="random sample", sig=(1,1)
 
@@ -74,7 +78,7 @@ def test_problem_2_gaussian_2d_random_mu():
     cobyla_tester(G, C, x, mu)
 
 
-def test_problem_3_two_gaussian_2d():
+def test_problem_two_gaussian_2d():
     '''
     mu1 = (-0.5, -0.5)
     mu2 = (0.5, 0.5)
@@ -103,21 +107,94 @@ def test_problem_3_two_gaussian_2d():
     x = np.ones(2)
     
     cobyla_tester(G, C, x, mu2)
-    
-@pytest.mark.skip(reason='')
-def test_problem_4_con():
-    '''
-    F(x, y) = ((x/a)^2 + (y/b)^2)^.5
-    C1(x, y) = 5 + x >= 0
-    C2(x, y) = 5 + y >= 0
-    '''
-    k = 5
-    c1 = lambda x: k + x[0]
-    c2 = lambda x: k + x[1]
 
-    F = con
-    C = (c1, c2)
+
+def test_problem_cone_unconstrains():
+    '''
+    Test cone
+    F(x, y) = (x^2 + y^2) ** .5
+    
+    '''
+    F = lambda x: ((x[0] ** 2) + (x[1] ** 2)) ** .5
+    C = ()
+    
     x = np.ones(2)
     known_x = np.zeros(2)
 
-    cobyla_tester(F, C, x, known_x)
+    cobyla_tester(cone, C, x, known_x)
+
+
+def test_problem_cone_constrains():
+    '''
+    Test cone
+    F(x, y) = (x^2 + y^2) ** .5
+    
+    '''
+    F = lambda x: ((x[0] ** 2) + (x[1] ** 2)) ** .5
+    k = 5
+    c1 = lambda x: k - x[0]
+    c2 = lambda x: k + x[0]
+    c3 = lambda x: k - x[1]
+    c4 = lambda x: k + x[1]
+    C = (c1, c2, c3, c4)
+    
+    x = np.ones(2)
+    known_x = np.zeros(2)
+
+    cobyla_tester(cone, C, x, known_x)
+
+
+def test_problem_shifted_cone_constrains():
+    '''
+    Test cone
+    F(x, y) = ((x - x0)^2 + (y - y0)^2) ** .5
+    
+    '''
+    x0 = np.random.random(2)
+    F = lambda x: cone(x - x0)
+    
+    k = 5
+    c1 = lambda x: k - x[0]
+    c2 = lambda x: k + x[0]
+    c3 = lambda x: k - x[1]
+    c4 = lambda x: k + x[1]
+    C = (c1, c2, c3, c4)
+    
+    x = np.ones(2)
+
+    cobyla_tester(F, C, x, x0)
+
+
+def test_problem_paraboloid():
+    '''
+    Test paraboloid
+
+    F(x, y) = (x / a)^2 + (y / b)^2
+    
+    '''
+    x = np.ones(2)
+    C = ()
+    known_x = np.zeros(2)
+    
+    cobyla_tester(paraboloid, C, x, known_x)
+
+
+def test_problem_shifted_paraboloid():
+    '''
+    Test paraboloid
+
+    F(x, y) = (x / a)^2 + (y / b)^2
+    
+    '''
+    x0 = np.random.random(2)
+    F = lambda x: paraboloid(x - x0)
+    C = ()
+    x = np.ones(2)
+    
+    cobyla_tester(F, C, x, x0)
+    
+    
+    
+
+
+

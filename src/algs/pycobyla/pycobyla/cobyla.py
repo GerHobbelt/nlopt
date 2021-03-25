@@ -197,7 +197,7 @@ class Cobyla:
 
         # Make an error return if SIMI is a poor approximation to the inverse of
         # the leading N by N submatrix of SIM
-        sim_simi = np.dot(self.sim, self.simi)
+        sim_simi = self.sim @ self.simi
         error = abs(sim_simi - np.eye(self.n)).max()
         error = 0 if error < 0  else error
         if error > .1: # pragma: no cover
@@ -212,11 +212,11 @@ class Cobyla:
         # and constraint functions, placing minus the objective function gradient
         # after the constraint gradients in the array A. The vector W is used for
         # working space
-        tcon = *_, self.fx = -self.datmat[-1, :-1]
-        self.con = tcon[:-1]
+        confx = *_, self.fx = -self.datmat[-1, :-1]
+        self.con = confx[:-1]
 
-        ww = (self.datmat[:-1, :-1] + tcon).T
-        self.a = np.dot(ww, self.simi.T)  # (m+1) * n
+        diff = (self.datmat[:-1, :-1] + confx).T # Matrix diff between constrains,fx vs best
+        self.a = diff @ self.simi.T  # (m+1) * n
         self.a[-1] *= -1
 
         
