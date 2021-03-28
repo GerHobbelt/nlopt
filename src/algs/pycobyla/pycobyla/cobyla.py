@@ -261,7 +261,7 @@ class Cobyla:
         self.simi[..., jdrop] /= self.simi[..., jdrop] @ dx
         temp = dx @ self.simi
         target = self.simi[..., jdrop].copy()
-        self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
+        self.simi -= np.broadcast_to(target, self.simi.shape).T * temp
         self.simi[..., jdrop] = target
 
         self.x = self.optimal_vertex + dx
@@ -384,7 +384,7 @@ class Cobyla:
         self.simi[..., jdrop] /= temp
         target = self.simi[..., jdrop].copy()
         temp = dx @ self.simi
-        self.simi -= np.broadcast_to(target, (self.n, self.n)).T * temp
+        self.simi -= np.broadcast_to(target, self.simi.shape).T * temp
         self.simi[..., jdrop] = target
         self.datmat[jdrop] = np.array((*self.con, self.fval, self.resmax))
 
