@@ -16,6 +16,9 @@ class Cobyla:
     ALPHA = 0.25
     BETA = 2.1
     GAMMA = 0.5
+    
+    BARMU_EVAL_FACTOR = 1.5 # Revise mu box. Pag. 56 
+    BARMU_SET_FACTOR = 2 
 
     # Float precision
     float = np.float64
@@ -243,7 +246,7 @@ class Cobyla:
         temp = self.GAMMA * self.rho * self.vsig[jdrop]
         dx = temp * self.simi[..., jdrop]
 
-        ssum = np.dot(self.a, dx)
+        ssum = self.a @ dx
         temp = self.datmat[-1, :-1]
 
         cvmaxp = max((0, *(-ssum - temp)[:-1]))
@@ -255,8 +258,8 @@ class Cobyla:
         dx = -dx if cond else dx
         self.sim[jdrop] = dx
 
-        self.simi[..., jdrop] /= np.dot(self.simi[..., jdrop], dx)
-        temp = np.dot(dx, self.simi)
+        self.simi[..., jdrop] /= self.simi[..., jdrop] @ dx
+        temp = dx @ self.simi
         target = self.simi[..., jdrop].copy()
         self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
         self.simi[..., jdrop] = target
@@ -304,21 +307,19 @@ class Cobyla:
         # Predict the change to F and the new maximum constraint violation if the
         # variables are altered from x(0) to x(0)+DX
         self.fval = 0
-        temp = (self.a * dx).sum(axis=1)
-        csum, fsum = self.con - temp[:-1], self.fval - temp[-1]
-        resnew = max((0, *csum))
+        temp = self.a @ dx
+        cdiff, ftemp = self.con - temp[:-1], -temp[-1]
+        resnew = max((0, *cdiff))
 
         # Increase PARMU if necessary and branch back if this change alters the
         # optimal vertex. Otherwise PREREM and PREREC will be set to the predicted 
         # reductions in the merit function and the maximum constraint violation
         # respectively
-        barmu = 0
         prerec = self.res - resnew
-        if prerec > 0 :
-            barmu = fsum / prerec
+        barmu = (ftemp / prerec) if (prerec > 0) else 0
 
-        if self.parmu < (barmu * 1.5):
-            self.parmu = barmu * 2
+        if self.parmu < (self.BARMU_EVAL_FACTOR * barmu):
+            self.parmu = self.BARMU_SET_FACTOR * barmu
             res = self.res
             phi = self.fmin + (self.parmu * res)
             phi_values = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
@@ -328,7 +329,7 @@ class Cobyla:
                 if (phi_val == phi) and (self.parmu == 0) and (res_val < res):
                     return
 
-        prerem = (self.parmu * prerec) - fsum
+        prerem = (self.parmu * prerec) - ftemp
 
         # Calculate the constraint and objective functions at x(*). Then find the 
         # actual reduction in the merit function
@@ -353,7 +354,7 @@ class Cobyla:
         # replaced
         jdrop = -1
         ratio = 1 if (trured <= 0) else 0
-        temp = abs(np.dot(dx, self.simi))
+        temp = abs(dx @ self.simi)
         for j, value in zip(range(self.n), temp):
             if value > ratio:
                 ratio, jdrop = value, j
@@ -379,10 +380,10 @@ class Cobyla:
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         self.sim[jdrop] = dx
-        temp = np.dot(dx, self.simi[..., jdrop])
+        temp = dx @ self.simi[..., jdrop]
         self.simi[..., jdrop] /= temp
         target = self.simi[..., jdrop].copy()
-        temp = np.dot(dx, self.simi)
+        temp = dx @ self.simi
         self.simi -= ((np.ones(self.simi.shape) * target).T * temp)
         self.simi[..., jdrop] = target
         self.datmat[jdrop] = np.array((*self.con, self.fval, self.resmax))

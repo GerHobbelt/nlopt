@@ -23,13 +23,13 @@ def opt_info(opt):
     logger.info(f'x: {opt.x}')
     
     
-def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500):
+def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500, tol=1e-11):
     opt = Cobyla(x, F, C, rhobeg=rhobeg, rhoend=rhoend, maxfun=maxfun)
     opt.run()
     opt_info(opt)
     
     error = sum((opt.x - known_x) ** 2)
-    assert error < 1e-11
+    assert error < tol
 
     return opt
 
