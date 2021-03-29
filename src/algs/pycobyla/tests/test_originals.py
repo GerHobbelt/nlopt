@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 logger.propagate = False
 stream_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stream_handler)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.INFO)
 
 
 RHOBEG = .5
-RHOEND = 1e-8
+RHOEND = 1e-12
 
 
 def opt_info(opt):
@@ -23,7 +23,7 @@ def opt_info(opt):
     logger.info(f'x: {opt.x}')
     
     
-def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500, tol=1e-6):
+def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=7500, tol=1e-6):
     opt = Cobyla(x, F, C, rhobeg=rhobeg, rhoend=rhoend, maxfun=maxfun)
     opt.run()
     opt_info(opt)

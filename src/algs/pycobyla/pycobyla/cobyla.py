@@ -16,9 +16,14 @@ class Cobyla:
     ALPHA = 0.25
     BETA = 2.1
     GAMMA = 0.5
-    
-    BARMU_EVAL_FACTOR = 1.5 # Revise mu box. Pag. 56 
-    BARMU_SET_FACTOR = 2 
+
+    # Experimental constants
+    BARMU_EVAL_FACTOR = 1.5 # Revise mu box. Pag. 56 [C1]
+    BARMU_SET_FACTOR = 2 # [C1]
+    RHO_ACCEPTABILITY_1 = 0.5 # Pag. 56, [C2]
+    RHO_ACCEPTABILITY_2 = 0.1 # Pag. 56, [C3]
+    RHO_REDUX_FACTOR = 0.5 # Pag. 56, [C4]
+    RHO_CONDITION_SCALE = 3 # Pag. 56, [C5]
 
     # Float precision
     float = np.float64
@@ -299,7 +304,7 @@ class Cobyla:
         
         if ifull == False:
             temp = sum(dx ** 2)
-            cond = (temp < 0.25 * (self.rho ** 2)) 
+            cond = (temp < ((self.RHO_ACCEPTABILITY_1 * self.rho ) ** 2)) 
             if cond:
                 self.ibrnch = True
                 return self.L550(ifull)
@@ -389,7 +394,7 @@ class Cobyla:
         self.datmat[jdrop] = np.array((*self.con, self.fval, self.resmax))
 
         # Branch back for further iterations with the current RHO
-        if (trured > 0) and (trured >= prerem * 0.1):
+        if (trured > 0) and (trured >= (self.RHO_ACCEPTABILITY_2 * prerem)):
             return
 
         return self.L550(ifull)
@@ -402,7 +407,8 @@ class Cobyla:
             
         # Otherwise reduce RHO if it is not at its least value and reset PARMU
         if (self.rho > self.rhoend):
-            self.rho = self.rhoend if (self.rho <= (self.rhoend * 1.5)) else (self.rho / 2)
+            cond = (self.RHO_CONDITION_SCALE * self.rhoend)
+            self.rho = self.rhoend if (self.rho <= cond) else (self.RHO_REDUX_FACTOR * self.rho)
             if self.parmu > 0:
                 denom = 0
                 for col, ref in zip(self.datmat[:-1, :-2].T, self.datmat[-1, :-2]):
