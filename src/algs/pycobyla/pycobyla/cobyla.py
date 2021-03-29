@@ -218,8 +218,8 @@ class Cobyla:
         confx = *_, self.fx = -self.datmat[-1, :-1]
         self.con = confx[:-1]
 
-        diff = (self.datmat[:-1, :-1] + confx).T # Matrix diff between constrains,fx vs best
-        self.a = diff @ self.simi.T  # (m+1) * n
+        diff = (self.datmat[:-1, :-1] + confx) # Matrix diff: (constrains,fx) vs best
+        self.a = (self.simi @ diff).T
         self.a[-1] *= -1
 
         

@@ -146,3 +146,4 @@ cython_debug/
 *.py.orig
 /docs/branch
 .DS_Store
+cobyla2c

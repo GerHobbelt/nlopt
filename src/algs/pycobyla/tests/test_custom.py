@@ -193,7 +193,17 @@ def test_problem_shifted_paraboloid():
     
     cobyla_tester(F, C, x, x0)
     
+
+def test_stop_fault():
+    F = lambda x: (2 - np.cos(x[0]) + x[1] ** 2) ** 2
+    C = ()
     
+    x = np.ones(2)
+    known_x = np.zeros(2)
+
+    cobyla_tester(F, C, x, known_x, maxfun=667)
+    cobyla_tester(F, C, x, known_x, maxfun=668)
+
     
 
 
