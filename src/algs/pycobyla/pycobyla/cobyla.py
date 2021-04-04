@@ -231,8 +231,8 @@ class Cobyla:
     def _is_acceptable_simplex(self, parsig, pareta):
         # Calculate the values of sigma and eta, and set IFLAG=False if the current
         # simplex is not acceptable
-        self.vsig = 1 / (self.simi ** 2).sum(axis=0) ** .5 # col sum
-        self.veta = (self.sim ** 2).sum(axis=1) ** .5 # row sum 
+        self.vsig = (1 / ((self.simi ** 2).sum(axis=0))) ** .5
+        self.veta = (self.sim ** 2).sum(axis=1) ** .5
         return not((self.vsig < parsig).any() or (self.veta > pareta).any())
 
     

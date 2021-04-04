@@ -54,7 +54,7 @@ class Trstlp:
 
         
     def L70(self):
-        optnew = self.resmax if (self.mcon == self.cobyla.m) else -np.dot(self.dx, self.cobyla.a[-1])
+        optnew = self.resmax if (self.mcon == self.cobyla.m) else -(self.dx @ self.cobyla.a[-1])
 
         if (self.icount == 0) or (optnew < self.optold):
             self.optold = optnew
@@ -163,7 +163,7 @@ class Trstlp:
             vsave = self.vmultc[self.icon]
             for k in range(self.icon, self.nact + 1):
                 kw = self.iact[k + 1]
-                sp = np.dot(self.z[k], self.a[kw])
+                sp = self.z[k] @ self.a[kw]
                 temp = ((sp ** 2) + (self.zdota[k + 1] ** 2)) ** 0.5
                 alpha = self.zdota[k + 1] / temp
                 beta = sp / temp
@@ -179,7 +179,7 @@ class Trstlp:
             self.iact[k] = isave
             self.vmultc[k] = vsave
 
-        temp = np.dot(self.z[self.nact], self.cobyla.a[kk])
+        temp = self.z[self.nact] @ self.cobyla.a[kk]
         if (temp == 0):
             return self.L490_termination_chance()
         
@@ -198,7 +198,7 @@ class Trstlp:
         self.iact[self.nact] = kk
         if ((self.mcon > self.cobyla.m) and (kk != (self.mcon - 1))):
             k = self.nact - 1
-            sp = np.dot(self.z[k], self.cobyla.a[kk])
+            sp = self.z[k] @ self.cobyla.a[kk]
             temp = ((sp ** 2) + (self.zdota[self.nact] ** 2)) ** 0.5
             alpha = self.zdota[self.nact] / temp
             beta = sp / temp
@@ -219,7 +219,7 @@ class Trstlp:
             return self.L320()
 
         kk = self.iact[self.nact]
-        temp = (np.dot(self.sdirn, self.cobyla.a[kk]) - 1) / self.zdota[self.nact]
+        temp = ((self.sdirn @ self.cobyla.a[kk]) - 1) / self.zdota[self.nact]
         self.sdirn -= (temp * self.z[self.nact])
         
         return self.L340()
@@ -234,7 +234,7 @@ class Trstlp:
                 kp = k + 1
                 kk = self.iact[kp]
                 
-                sp = np.dot(self.z[k], self.cobyla.a[kk])
+                sp = self.z[k] @ self.cobyla.a[kk]
                 temp = ((sp ** 2) + (self.zdota[kp] ** 2)) ** 0.5
                 alpha = self.zdota[kp] / temp
                 beta = sp / temp
@@ -256,7 +256,7 @@ class Trstlp:
         if (self.mcon > self.cobyla.m):
             return self.L320()
 
-        temp = np.dot(self.sdirn, self.z[self.nact + 1])
+        temp = self.sdirn @ self.z[self.nact + 1]
         self.sdirn -= temp * self.z[self.nact + 1]
         
         return self.L340()
@@ -276,8 +276,8 @@ class Trstlp:
         dd = (self.cobyla.rho ** 2)
         mask = (abs(self.dx) >= (self.cobyla.rho * 1e-6))
         dd -= sum(self.dx[mask] ** 2)
-        sd = np.dot(self.dx, self.sdirn)
-        ss = np.dot(self.sdirn, self.sdirn)
+        sd = self.dx @ self.sdirn
+        ss = self.sdirn @ self.sdirn
 
         if (dd <= 0):
             return self.L490_termination_chance()
@@ -310,7 +310,7 @@ class Trstlp:
             resold, self.resmax = self.resmax, 0
             for k in range(0, self.nact + 1):
                 kk = self.iact[k]
-                temp = self.cobyla.con[kk] - np.dot(self.cobyla.a[kk], self.dxnew)
+                temp = self.cobyla.con[kk] - (self.cobyla.a[kk] @ self.dxnew)
                 self.resmax = max(self.resmax, temp)
                 
         # Set VMULTD to the VMULTC vector that would occur if DX became DXNEW. A
