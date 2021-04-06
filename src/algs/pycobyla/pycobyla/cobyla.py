@@ -18,12 +18,12 @@ class Cobyla:
     GAMMA = 0.5
 
     # Experimental constants
-    BARMU_EVAL_FACTOR = 1.5 # Revise mu box. Pag. 56 [C1]
-    BARMU_SET_FACTOR = 2 # [C1]
-    RHO_ACCEPTABILITY_1 = 0.5 # Pag. 56, [C2]
-    RHO_ACCEPTABILITY_2 = 0.1 # Pag. 56, [C3]
-    RHO_REDUX_FACTOR = 0.5 # Pag. 56, [C4]
-    RHO_CONDITION_SCALE = 3 # Pag. 56, [C5]
+    BARMU_EVAL_FACTOR = 1.5 # Revise mu box. Pag. 56 [Co1]
+    BARMU_SET_FACTOR = 2 # [Co1]
+    RHO_ACCEPTABILITY_1 = 0.5 # Pag. 56, [Co2]
+    RHO_ACCEPTABILITY_2 = 0.1 # Pag. 56, [Co3]
+    RHO_REDUX_FACTOR = 0.5 # Pag. 56, [Co4]
+    RHO_CONDITION_SCALE = 3 # Pag. 56, [Co5]
 
     # Float precision
     float = np.float64
@@ -270,10 +270,20 @@ class Cobyla:
         self.simi[..., jdrop] = target
 
         self.x = self.optimal_vertex + dx
-        return jdrop
 
+        self._calcfc()
+        self.datmat[jdrop] = self.current_values
+        self.ibrnch = True
 
-    def L140(self): # pragma: no cover
+        
+    def L140(self):
+        '''
+        L140:
+        
+        Ensures that x(0) is the optimal vertex.
+        Set self.iflag = True iff the simplex is acceptable.
+        
+        '''
         parsig = self.parsig
         pareta = self.pareta
         
@@ -286,11 +296,7 @@ class Cobyla:
         if (self.ibrnch == True) or (self.iflag == True):
             return
 
-        jdrop = self._new_vertex_improve_acceptability(pareta)
-        
-        self._calcfc()
-        self.datmat[jdrop] = self.current_values
-        self.ibrnch = True
+        self._new_vertex_improve_acceptability(pareta)
         
         self._set_optimal_vertex()
         self._linear_coef()
