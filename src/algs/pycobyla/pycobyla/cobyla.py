@@ -26,7 +26,7 @@ class Cobyla:
     RHO_CONDITION_SCALE = 3 # Pag. 56, [Co5]
 
     # Float precision
-    float = np.float64
+    float = np.float128
     
     
     def __init__(self, x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
@@ -237,19 +237,15 @@ class Cobyla:
 
     
     def _new_vertex_improve_acceptability(self, pareta):
-        jdrop, temp = -1, pareta
-        for j in range(self.n):
-            if self.veta[j] > temp:
-                jdrop, temp = j, self.veta[j]
-                
-        if jdrop == -1:
-            for j in range(self.n):
-                if self.vsig[j] < temp:
-                    jdrop, temp = j, self.vsig[j]
+        mth = lambda x: x[1]
+        jdrop, max_veta = max(zip(range(self.n), self.veta), key=mth)
+        if max_veta < pareta:
+            jdrop, min_sig = min(zip(range(self.n), self.vsig), key=mth)
         
         # Calculate the step to the new vertex and its sign
         temp = self.GAMMA * self.rho * self.vsig[jdrop]
         dx = temp * self.simi[..., jdrop]
+        kdx = self.vsig[jdrop] / (self.GAMMA * self.rho) 
 
         ssum = self.a @ dx
         temp = self.datmat[-1, :-1]
@@ -257,13 +253,13 @@ class Cobyla:
         cvmaxp = max((0, *(-ssum - temp)[:-1]))
         cvmaxm = max((0, *(ssum - temp)[:-1]))
 
-        cond = (self.parmu * (cvmaxp - cvmaxm) > (2 * ssum[-1]))
-
+        cond = ((self.parmu * (cvmaxp - cvmaxm)) > (2 * ssum[-1]))
+        
         # Update the elements of SIM and SIMI, and set the next X
-        dx = -dx if cond else dx
+        dx, kdx = (-dx, -kdx) if cond else (dx, kdx)
         self.sim[jdrop] = dx
 
-        self.simi[..., jdrop] /= self.simi[..., jdrop] @ dx
+        self.simi[..., jdrop] *= kdx # Original: self.simi[..., jdrop] /= (self.simi[..., jdrop] @ dx)
         temp = dx @ self.simi
         target = self.simi[..., jdrop].copy()
         self.simi -= np.broadcast_to(target, self.simi.shape).T * temp

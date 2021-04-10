@@ -11,24 +11,27 @@ logger = logging.getLogger(__name__)
 logger.propagate = False
 stream_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(stream_handler)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.INFO)
 
 
 RHOBEG = .5
 RHOEND = 1e-12
 
 
-def opt_info(opt):
-    logger.info(f'nfavals: {opt.nfvals}')
+def opt_info(opt, error):
+    logger.info('')
+    logger.info(f'nfvals: {opt.nfvals}')
+    logger.info(f'fmin: {opt.fmin}')
     logger.info(f'x: {opt.x}')
+    logger.info(f'error: {error}')
     
     
-def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=7500, tol=1e-6):
+def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=7500, tol=1e-8):
     opt = Cobyla(x, F, C, rhobeg=rhobeg, rhoend=rhoend, maxfun=maxfun)
     opt.run()
-    opt_info(opt)
     
     error = sum((opt.x - known_x) ** 2) ** .5
+    opt_info(opt, error)
     assert error < tol
 
     return opt
@@ -57,7 +60,7 @@ def test_problem_2():
     C1(x, y) = 1 - x^2 - y^2 >= 0
 
     '''
-    F = lambda x: (x[0]* x[1]) 
+    F = lambda x: (x[0] * x[1]) 
     c1 = lambda x: 1 - (x[0] ** 2) - (x[1] ** 2)
     C = (c1,)
     x = np.ones(2)
@@ -74,7 +77,7 @@ def test_problem_3():
     C1(x, y, z) = 1 - x^2 - (2 * y^2) - (3 * z^2) >= 0
 
     '''
-    F = lambda x: x[0]* x[1] * x[2]
+    F = lambda x: x[0] * x[1] * x[2]
     c1 = lambda x: 1 - (x[0] ** 2) - (2 * (x[1] ** 2))  - (3 * (x[2] ** 2))
     C = (c1,)
     x = np.ones(3)
@@ -110,7 +113,7 @@ def test_problem_5():
     x = np.ones(2)
     known_x = np.array((-1, 1))
 
-    cobyla_tester(F, C, x, known_x, tol=1e-5)
+    cobyla_tester(F, C, x, known_x)
 
 
 def test_problem_6():
@@ -208,7 +211,7 @@ def test_problem_9():
         (2.330499, 1.951372, -.4775414, 4.365726, -.624487, 1.038131, 1.594227)
     )
     
-    cobyla_tester(F, C, x, known_x)
+    cobyla_tester(F, C, x, known_x, tol=1e-6)
 
 
 def test_problem_10():
@@ -270,6 +273,6 @@ def test_problem_10():
     known_x[4:] = known_x[:5]
 
     error = sum((opt.x - known_x) ** 2)
+    opt_info(opt, error)
     assert error < 1e-6
 
-    opt_info(opt)
