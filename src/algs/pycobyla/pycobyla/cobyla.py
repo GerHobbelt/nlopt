@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class Cobyla:
     FINISH = 0
+    CONTINUE = 1
 
     # Constants
     DELTA = 1.1
@@ -332,9 +333,9 @@ class Cobyla:
             phi_values = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
             for phi_val, res_val in zip(phi_values, self.datmat[:-1, -1]):
                 if (phi_val < phi):
-                    return
+                    return self.CONTINUE
                 if (phi_val == phi) and (self.parmu == 0) and (res_val < res):
-                    return
+                    return self.CONTINUE
 
         prerem = (self.parmu * prerec) - ftemp
 
@@ -398,7 +399,7 @@ class Cobyla:
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= (self.RHO_ACCEPTABILITY_2 * prerem)):
             # self.ibrnch = True  # This is set in paper but not in the C implementation
-            return
+            return self.CONTINUE
 
         return self.L550(ifull)
 
@@ -406,7 +407,7 @@ class Cobyla:
     def L550(self, ifull):
         if (self.iflag is False):
             self.ibrnch = False
-            return
+            return self.CONTINUE
             
         # Otherwise reduce RHO if it is not at its least value and reset PARMU
         if (self.rho > self.rhoend):
@@ -428,7 +429,7 @@ class Cobyla:
                     self.parmu = 0
                 elif ((cmax - cmin) < (self.parmu * denom)):
                     self.parmu = (cmax - cmin) / denom
-            return
+            return self.CONTINUE
 
         return self.L600_L620(ifull)
 
