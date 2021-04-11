@@ -18,12 +18,12 @@ class Cobyla:
     GAMMA = 0.5
 
     # Experimental constants
-    BARMU_EVAL_FACTOR = 1.5 # Revise mu box. Pag. 56 [Co1]
-    BARMU_SET_FACTOR = 2 # [Co1]
-    RHO_ACCEPTABILITY_1 = 0.5 # Pag. 56, [Co2]
-    RHO_ACCEPTABILITY_2 = 0.1 # Pag. 56, [Co3]
-    RHO_REDUX_FACTOR = 0.5 # Pag. 56, [Co4]
-    RHO_CONDITION_SCALE = 3 # Pag. 56, [Co5]
+    BARMU_EVAL_FACTOR = 1.5  # Revise mu box. Pag. 56 [Co1]
+    BARMU_SET_FACTOR = 2  # [Co1]
+    RHO_ACCEPTABILITY_1 = 0.5  # Pag. 56, [Co2]
+    RHO_ACCEPTABILITY_2 = 0.1  # Pag. 56, [Co3]
+    RHO_REDUX_FACTOR = 0.5  # Pag. 56, [Co4]
+    RHO_CONDITION_SCALE = 3  # Pag. 56, [Co5]
 
     # Float precision
     float = np.float128
@@ -43,9 +43,9 @@ class Cobyla:
         self.maxfun = maxfun
         
         # mpp (m constrains, fval, resmax)
-        self.con = None # m constrains values
+        self.con = None  # m constrains values
         self.fx = 0
-        self.fval = 0 
+        self.fval = 0
         self.resmax = 0
 
         # control
@@ -62,21 +62,21 @@ class Cobyla:
         # last one for the best vertex
         self.datmat = np.zeros((n + 1, m + 2), dtype=self.float)
 
-        self.a = None # (m+1) * n
+        self.a = None  # (m+1) * n
 
         self.vsig = None
         self.veta = None
 
         # flags
         self.ibrnch = False
-        self.iflag = False # Acceptable simplex
+        self.iflag = False  # Acceptable simplex
 
         # Params
         self.parmu = 0
 
 
     @property
-    def data(self): # pragma: no cover
+    def data(self):  # pragma: no cover
         print(f'nfvals: {self.nfvals}')
         print(f'x: {self.x}')
         print(f'optimal_vertex: {self.optimal_vertex}')
@@ -133,7 +133,7 @@ class Cobyla:
 
             
     def _calcfc(self):
-        if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)): # pragma: no cover
+        if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)):  # pragma: no cover
             # Error: COBYLA_USERABORT (rc = 1)
             self.L600_L620()
             logger.error('maximum number of function evaluations reach')
@@ -142,7 +142,7 @@ class Cobyla:
         self.nfvals += 1
         try:
             self.fval = self.F(self.x)
-        except Exception as e: # pragma: no cover
+        except Exception:  # pragma: no cover
             # Error: COBYLA_USERABORT (rc = 3)
             self.L600_L620()
             logger.error('cobyla: user requested end of minimitzation')
@@ -155,7 +155,7 @@ class Cobyla:
         
     def _set_datmat_step(self, jdrop):
         if self.fmin <= self.fval:
-            self.x[jdrop] = self.optimal_vertex[jdrop] # restores the previous values
+            self.x[jdrop] = self.optimal_vertex[jdrop]  # restores the previous values
         else:
             self.optimal_vertex[jdrop] = self.x[jdrop]
             self.datmat[jdrop] = self.datmat[-1]
@@ -190,7 +190,7 @@ class Cobyla:
                 nbest = j
                 phimin = phi_value
             elif ((phi_value == phimin) and (self.parmu == 0)):
-                resmax_best = self.datmat[nbest, -1] 
+                resmax_best = self.datmat[nbest, -1]
                 nbest = j if (resmax_j < resmax_best) else nbest
                 
         # Switch the best vertex into pole position if it is not there already,
@@ -201,14 +201,14 @@ class Cobyla:
             self.sim[nbest] = np.zeros(self.n)
             self.optimal_vertex += temp
             self.sim -= temp
-            self.simi[..., nbest] = -self.simi.sum(axis=1) # Add row elements 
+            self.simi[..., nbest] = -self.simi.sum(axis=1)  # Add row elements
 
         # Make an error return if SIMI is a poor approximation to the inverse of
         # the leading N by N submatrix of SIM
         sim_simi = self.sim @ self.simi
         error = abs(sim_simi - np.eye(self.n)).max()
-        error = 0 if error < 0  else error
-        if error > .1: # pragma: no cover
+        error = 0 if error < 0 else error
+        if error > .1:  # pragma: no cover
             # Error: COBYLA_MAXFUN (rc = 2)
             self.L600_L620()
             logger.error('cobyla: rounding errors are becoming damaging')
@@ -223,7 +223,7 @@ class Cobyla:
         confx = *_, self.fx = -self.datmat[-1, :-1]
         self.con = confx[:-1]
 
-        diff = (self.datmat[:-1, :-1] + confx) # Matrix diff: (constrains,fx) vs best
+        diff = (self.datmat[:-1, :-1] + confx)  # Matrix diff: (constrains,fx) vs best
         self.a = (self.simi @ diff).T
         self.a[-1] *= -1
 
@@ -245,7 +245,7 @@ class Cobyla:
         # Calculate the step to the new vertex and its sign
         temp = self.GAMMA * self.rho * self.vsig[jdrop]
         dx = temp * self.simi[..., jdrop]
-        kdx = self.vsig[jdrop] / (self.GAMMA * self.rho) 
+        kdx = self.vsig[jdrop] / (self.GAMMA * self.rho)
 
         ssum = self.a @ dx
         temp = self.datmat[-1, :-1]
@@ -259,7 +259,7 @@ class Cobyla:
         dx, kdx = (-dx, -kdx) if cond else (dx, kdx)
         self.sim[jdrop] = dx
 
-        self.simi[..., jdrop] *= kdx # Original: self.simi[..., jdrop] /= (self.simi[..., jdrop] @ dx)
+        self.simi[..., jdrop] *= kdx  # Original: self.simi[..., jdrop] /= (self.simi[..., jdrop] @ dx)
         temp = dx @ self.simi
         target = self.simi[..., jdrop].copy()
         self.simi -= np.broadcast_to(target, self.simi.shape).T * temp
@@ -289,7 +289,7 @@ class Cobyla:
 
         # If a new vertex is needed to improve acceptability, then decide which
         # vertex to drop from simplex
-        if (self.ibrnch == True) or (self.iflag == True):
+        if (self.ibrnch is True) or (self.iflag is True):
             return
 
         self._new_vertex_improve_acceptability(pareta)
@@ -304,9 +304,9 @@ class Cobyla:
         trstlp = Trstlp(self)
         ifull, dx = trstlp.run()
         
-        if ifull == False:
+        if ifull is False:
             temp = sum(dx ** 2)
-            cond = (temp < ((self.RHO_ACCEPTABILITY_1 * self.rho ) ** 2)) 
+            cond = (temp < ((self.RHO_ACCEPTABILITY_1 * self.rho) ** 2))
             if cond:
                 self.ibrnch = True
                 return self.L550(ifull)
@@ -319,7 +319,7 @@ class Cobyla:
         resnew = max((0, *cdiff))
 
         # Increase PARMU if necessary and branch back if this change alters the
-        # optimal vertex. Otherwise PREREM and PREREC will be set to the predicted 
+        # optimal vertex. Otherwise PREREM and PREREC will be set to the predicted
         # reductions in the merit function and the maximum constraint violation
         # respectively
         prerec = self.res - resnew
@@ -338,7 +338,7 @@ class Cobyla:
 
         prerem = (self.parmu * prerec) - ftemp
 
-        # Calculate the constraint and objective functions at x(*). Then find the 
+        # Calculate the constraint and objective functions at x(*). Then find the
         # actual reduction in the merit function
         self.x = self.optimal_vertex + dx
         self.ibrnch = True
@@ -404,7 +404,7 @@ class Cobyla:
 
         
     def L550(self, ifull):
-        if (self.iflag == False):
+        if (self.iflag is False):
             self.ibrnch = False
             return
             
@@ -426,7 +426,7 @@ class Cobyla:
                 cmax = temp.max()
                 if denom == 0:
                     self.parmu = 0
-                elif ((cmax - cmin) < (self.parmu * denom)): 
+                elif ((cmax - cmin) < (self.parmu * denom)):
                     self.parmu = (cmax - cmin) / denom
             return
 
@@ -435,7 +435,7 @@ class Cobyla:
     
     def L600_L620(self, ifull=False):
         # Return the best calculated values of the variables
-        if (ifull == False):
+        if (ifull is False):
             # L600
             self.x = self.optimal_vertex
             self.fval = self.fmin
