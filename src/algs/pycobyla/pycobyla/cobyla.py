@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class Cobyla:
     FINISH = 0
-    CONTINUE = 1
+    NEW_ITERATION = 1
 
     # Constants
     DELTA = 1.1
@@ -132,6 +132,9 @@ class Cobyla:
             if self.L370() == self.FINISH:
                 break
 
+    def phi(self, fx, res):
+        return fx + (self.parmu * res)
+    
             
     def _calcfc(self):
         if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)):  # pragma: no cover
@@ -181,12 +184,11 @@ class Cobyla:
     def _set_optimal_vertex(self):
         # Identify the optimal vertex of the current simplex
         nbest = -1
-        phi = lambda fx, res: fx + (self.parmu * res)
 
-        phimin = phi(fx=self.fmin, res=self.res)
+        phimin = self.phi(fx=self.fmin, res=self.res)
         for j, row in zip(range(self.n), self.datmat):
             *_, fx_j, resmax_j = row
-            phi_value = phi(fx_j, resmax_j)
+            phi_value = self.phi(fx_j, resmax_j)
             if phi_value < phimin:
                 nbest = j
                 phimin = phi_value
@@ -329,13 +331,13 @@ class Cobyla:
         if self.parmu < (self.BARMU_EVAL_FACTOR * barmu):
             self.parmu = self.BARMU_SET_FACTOR * barmu
             res = self.res
-            phi = self.fmin + (self.parmu * res)
-            phi_values = self.datmat[..., -2] + (self.parmu * self.datmat[..., -1])
+            phi_min = self.phi(self.fmin, res)
+            phi_values = self.phi(fx=self.datmat[..., -2], res=self.datmat[..., -1])
             for phi_val, res_val in zip(phi_values, self.datmat[:-1, -1]):
-                if (phi_val < phi):
-                    return self.CONTINUE
-                if (phi_val == phi) and (self.parmu == 0) and (res_val < res):
-                    return self.CONTINUE
+                if (phi_val < phi_min):
+                    return self.NEW_ITERATION
+                if (phi_val == phi_min) and (self.parmu == 0) and (res_val < res):
+                    return self.NEW_ITERATION
 
         prerem = (self.parmu * prerec) - ftemp
 
@@ -399,7 +401,7 @@ class Cobyla:
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= (self.RHO_ACCEPTABILITY_2 * prerem)):
             # self.ibrnch = True  # This is set in paper but not in the C implementation
-            return self.CONTINUE
+            return self.NEW_ITERATION
 
         return self.L550(ifull)
 
@@ -407,7 +409,7 @@ class Cobyla:
     def L550(self, ifull):
         if (self.iflag is False):
             self.ibrnch = False
-            return self.CONTINUE
+            return self.NEW_ITERATION
             
         # Otherwise reduce RHO if it is not at its least value and reset PARMU
         if (self.rho > self.rhoend):
@@ -429,7 +431,7 @@ class Cobyla:
                     self.parmu = 0
                 elif ((cmax - cmin) < (self.parmu * denom)):
                     self.parmu = (cmax - cmin) / denom
-            return self.CONTINUE
+            return self.NEW_ITERATION
 
         return self.L600_L620(ifull)
 
