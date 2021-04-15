@@ -80,8 +80,8 @@ class Cobyla:
     def data(self):  # pragma: no cover
         print(f'nfvals: {self.nfvals}')
         print(f'x: {self.x}')
-        print(f'optimal_vertex: {self.optimal_vertex}')
         print(f'current_values: {self.current_values}')
+        print(f'optimal_vertex: {self.optimal_vertex}')
         print(f'datmat: \n{self.datmat}')
         print(f'a: \n{self.a}')
         print(f'sim: \n{self.sim}')
@@ -351,8 +351,8 @@ class Cobyla:
     
         
     def L440(self, ifull, dx, prerec, prerem):
-        vmold = self.fmin + (self.parmu * self.res)
-        vmnew = self.fval + (self.parmu * self.resmax)
+        vmold = self.phi(fx=self.fmin, res=self.res)
+        vmnew = self.phi(fx=self.fval, res=self.resmax) 
         trured = vmold - vmnew
         if (self.parmu == 0) and (self.fval == self.fmin):
             prerem = prerec
