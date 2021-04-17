@@ -1,3 +1,10 @@
+'''
+Pure Python version of COBYLA algorithm.
+Ported from COBYLA C version.
+Reviewed from original paper.
+
+'''
+
 import logging
 
 import numpy as np
