@@ -97,7 +97,6 @@ class Cobyla:
     def orig_con(self):
         '''
         WARNING: self.fx is not self.fval
-        
         '''
         return np.array((*self.con, self.fx, self.resmax), dtype=self.float)
 
@@ -125,11 +124,10 @@ class Cobyla:
     def run(self):
         self.set_initial_simplex()
         self.ibrnch = True
-
-        self.L140()
+        
         while True:
-            self.L140()
-            if self.L370() == self.FINISH:
+            self.L140_review_current_simplex()
+            if self.L370_generate_x_start() == self.FINISH:
                 break
 
     def phi(self, fx, res):
@@ -139,7 +137,7 @@ class Cobyla:
     def _calcfc(self):
         if ((self.nfvals >= self.maxfun) and (self.nfvals > 0)):  # pragma: no cover
             # Error: COBYLA_USERABORT (rc = 1)
-            self.L600_L620()
+            self.L600_L620_terminate()
             logger.error('maximum number of function evaluations reach')
             raise UserWarning('cobyla: maximum number of function evaluations reach')
 
@@ -148,7 +146,7 @@ class Cobyla:
             self.fval = self.F(self.x)
         except Exception:  # pragma: no cover
             # Error: COBYLA_USERABORT (rc = 3)
-            self.L600_L620()
+            self.L600_L620_terminate()
             logger.error('cobyla: user requested end of minimitzation')
             raise UserWarning('cobyla: user requested end of minimitzation')
 
@@ -213,7 +211,7 @@ class Cobyla:
         error = 0 if error < 0 else error
         if error > .1:  # pragma: no cover
             # Error: COBYLA_MAXFUN (rc = 2)
-            self.L600_L620()
+            self.L600_L620_terminate()
             logger.error('cobyla: rounding errors are becoming damaging')
             raise UserWarning('cobyla: rounding errors are becoming damaging')
         
@@ -275,13 +273,12 @@ class Cobyla:
         self.ibrnch = True
 
         
-    def L140(self):
+    def L140_review_current_simplex(self):
         '''
         L140:
         
         Ensures that x(0) is the optimal vertex.
-        Set self.iflag = True iff the simplex is acceptable.
-        
+        Set self.iflag = True iff the simplex is acceptable.        
         '''
         parsig = self.parsig
         pareta = self.pareta
@@ -302,7 +299,12 @@ class Cobyla:
         self.iflag = self._is_acceptable_simplex(parsig, pareta)
         
         
-    def L370(self):
+    def L370_generate_x_start(self):
+        '''
+        L370:
+
+        x(*) generation. mu param could be updated.
+        '''
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
         trstlp = Trstlp(self)
         ifull, dx = trstlp.run()
@@ -312,7 +314,7 @@ class Cobyla:
             cond = (temp < ((self.RHO_ACCEPTABILITY_1 * self.rho) ** 2))
             if cond:
                 self.ibrnch = True
-                return self.L550(ifull)
+                return self.L550_update_params(ifull)
 
         # Predict the change to F and the new maximum constraint violation if the
         # variables are altered from x(0) to x(0)+DX
@@ -325,7 +327,7 @@ class Cobyla:
         # optimal vertex. Otherwise PREREM and PREREC will be set to the predicted
         # reductions in the merit function and the maximum constraint violation
         # respectively
-        prerec = self.res - resnew
+        prerec = self.res - resnew  # PREdicted REduction maximum Constraint violation
         barmu = (ftemp / prerec) if (prerec > 0) else 0
 
         if self.parmu < (self.BARMU_EVAL_FACTOR * barmu):
@@ -339,7 +341,7 @@ class Cobyla:
                 if (phi_val == phi_min) and (self.parmu == 0) and (res_val < res):
                     return self.NEW_ITERATION
 
-        prerem = (self.parmu * prerec) - ftemp
+        prerem = (self.parmu * prerec) - ftemp  # PREdicted REduction Merit function
 
         # Calculate the constraint and objective functions at x(*). Then find the
         # actual reduction in the merit function
@@ -347,10 +349,14 @@ class Cobyla:
         self.ibrnch = True
         
         self._calcfc()
-        return self.L440(ifull, dx, prerec, prerem)
+        return self.L440_update_simplex(ifull, dx, prerec, prerem)
     
         
-    def L440(self, ifull, dx, prerec, prerem):
+    def L440_update_simplex(self, ifull, dx, prerec, prerem):
+        '''
+        L440:
+
+        '''
         vmold = self.phi(fx=self.fmin, res=self.res)
         vmnew = self.phi(fx=self.fval, res=self.resmax) 
         trured = vmold - vmnew
@@ -386,7 +392,7 @@ class Cobyla:
         if lflag is not None:
             jdrop = lflag
         if jdrop == -1:
-            return self.L550(ifull)
+            return self.L550_update_params(ifull)
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         self.sim[jdrop] = dx
@@ -403,10 +409,15 @@ class Cobyla:
             # self.ibrnch = True  # This is set in paper but not in the C implementation
             return self.NEW_ITERATION
 
-        return self.L550(ifull)
+        return self.L550_update_params(ifull)
 
         
-    def L550(self, ifull):
+    def L550_update_params(self, ifull):
+        '''
+        L550:
+
+        Updates mu param. Updates rho param.
+        '''
         if (self.iflag is False):
             self.ibrnch = False
             return self.NEW_ITERATION
@@ -433,10 +444,14 @@ class Cobyla:
                     self.parmu = (cmax - cmin) / denom
             return self.NEW_ITERATION
 
-        return self.L600_L620(ifull)
+        return self.L600_L620_terminate(ifull)
 
     
-    def L600_L620(self, ifull=False):
+    def L600_L620_terminate(self, ifull=False):
+        '''
+        L600, L620:
+
+        '''
         # Return the best calculated values of the variables
         if (ifull is False):
             # L600
