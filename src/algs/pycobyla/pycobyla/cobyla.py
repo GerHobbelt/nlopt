@@ -52,7 +52,7 @@ class Cobyla:
         
         # mpp (m constrains, fval, resmax)
         self.con = None  # m constrains values
-        self.fx = 0
+        self.neg_cmin = None
         self.fval = 0
         self.resmax = 0
 
@@ -98,15 +98,7 @@ class Cobyla:
     @property
     def current_values(self):
         return np.array((*self.con, self.fval, self.resmax), dtype=self.float)
-
     
-    @property
-    def orig_con(self):
-        '''
-        WARNING: self.fx is not self.fval
-        '''
-        return np.array((*self.con, self.fx, self.resmax), dtype=self.float)
-
     
     @property
     def parsig(self):
@@ -117,7 +109,12 @@ class Cobyla:
     def pareta(self):
         return self.BETA * self.rho
 
+    
+    @property
+    def neg_cfmin(self):
+        return -self.datmat[-1, :-1]
 
+    
     @property
     def fmin(self):
         return self.datmat[-1, -2]
@@ -131,7 +128,7 @@ class Cobyla:
     def run(self):
         self.set_initial_simplex()
         self.ibrnch = True
-        
+
         while True:
             self.L140_review_current_simplex()
             if self.L370_generate_x_start() == self.FINISH:
@@ -228,10 +225,10 @@ class Cobyla:
         # and constraint functions, placing minus the objective function gradient
         # after the constraint gradients in the array A. The vector W is used for
         # working space
-        confx = *_, self.fx = -self.datmat[-1, :-1]
-        self.con = confx[:-1]
+        neg_cfmin = self.neg_cfmin  # -self.datmat[-1, :-1]
+        self.neg_cmin = neg_cfmin[:-1] 
 
-        diff = (self.datmat[:-1, :-1] + confx)  # Matrix diff: (constrains,fx) vs best
+        diff = (self.datmat[:-1, :-1] + neg_cfmin)  # Matrix diff: (constrains,fx) vs best
         self.a = (self.simi @ diff).T
         self.a[-1] *= -1
 
@@ -327,7 +324,7 @@ class Cobyla:
         # variables are altered from x(0) to x(0)+DX
         self.fval = 0
         temp = self.a @ dx
-        cdiff, ftemp = self.con - temp[:-1], -temp[-1]
+        cdiff, ftemp = self.neg_cmin - temp[:-1], -temp[-1]
         resnew = max((0, *cdiff))
 
         # Increase PARMU if necessary and branch back if this change alters the
@@ -409,7 +406,7 @@ class Cobyla:
         temp = dx @ self.simi
         self.simi -= np.broadcast_to(target, self.simi.shape).T * temp
         self.simi[..., jdrop] = target
-        self.datmat[jdrop] = np.array((*self.con, self.fval, self.resmax))
+        self.datmat[jdrop] = self.current_values
 
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= (self.RHO_ACCEPTABILITY_2 * prerem)):
@@ -431,8 +428,8 @@ class Cobyla:
             
         # Otherwise reduce RHO if it is not at its least value and reset PARMU
         if (self.rho > self.rhoend):
-            cond = (self.RHO_CONDITION_SCALE * self.rhoend)
-            self.rho = self.rhoend if (self.rho <= cond) else (self.RHO_REDUX_FACTOR * self.rho)
+            cond = (self.rho <= (self.RHO_CONDITION_SCALE * self.rhoend))
+            self.rho = self.rhoend if cond else (self.RHO_REDUX_FACTOR * self.rho)
             if self.parmu > 0:
                 denom = 0
                 for col, ref in zip(self.datmat[:-1, :-2].T, self.datmat[-1, :-2]):

@@ -1,0 +1,117 @@
+tests/test_custom.py::test_problem_gaussian_2d:
+  nfvals: 88
+  fmin: -1.0
+  x: [1.40230486e-10, 8.95344630e-11]
+  error: 1.6637610755653658e-10
+
+tests/test_custom.py::test_problem_gaussian_2d_random_mu:
+  nfvals: 83
+  fmin: -1.0
+  x: [0.63978279, 0.57369452]
+  error: 1.6294525872953086e-10
+
+tests/test_custom.py::test_problem_two_gaussian_2d:
+  nfvals: 82
+  fmin: -2.000000000013888
+  x: [2.5, 2.5]
+  error: 1.3909975362962408e-10
+
+tests/test_custom.py::test_problem_cone_unconstrains:
+  nfvals: 113
+  fmin: 2.771177074898087e-13
+  x: [5.78832060e-13, -6.97059509e-13]
+  error: 9.060565725310739e-13
+
+tests/test_custom.py::test_problem_cone_constrains:
+  nfvals: 113
+  fmin: 2.771177074898087e-13
+  x: [5.78832060e-13, -6.97059509e-13]
+  error: 9.060565725310739e-13
+
+tests/test_custom.py::test_problem_shifted_cone_constrains:
+  nfvals: 116
+  fmin: 2.01571841164275e-13
+  x: [0.48568836, 0.93990185]
+  error: 9.563052160390562e-13
+
+tests/test_custom.py::test_problem_paraboloid:
+  nfvals: 98
+  fmin: 4.631804477396231e-25
+  x: [3.35677339e-13, 3.94862843e-13]
+  error: 5.182624245902136e-13
+
+tests/test_custom.py::test_problem_shifted_paraboloid:
+  nfvals: 110
+  fmin: 5.179887287253154e-25
+  x: [0.95432414, 0.05174265]
+  error: 1.1330425670424747e-12
+
+tests/test_custom.py::test_stop_fault:
+  nfvals: 89
+  fmin: 1.0
+  x: [-3.93027534e-10,  1.56949117e-10]
+  error: 4.2320641280038043e-10
+
+tests/test_originals.py::test_problem_1:
+  nfvals: 173
+  fmin: 1.6473236513215057e-24
+  x: [-1.0000000e+00,  7.3716933e-13]
+  error: 1.2818663231919354e-12
+
+tests/test_originals.py::test_problem_2:
+  nfvals: 108
+  fmin: -0.5
+  x: [0.70710678, -0.70710678]
+  error: 2.5822813191075348e-11
+
+tests/test_originals.py::test_problem_3:
+  nfvals: 163
+  fmin: -0.07856742013183861
+  x: [0.57735027,  0.40824829, -0.33333333]
+  error: 2.0138492722648419e-10
+
+tests/test_originals.py::test_problem_4:
+  nfvals: 624
+  fmin: 5.073021093926607e-23
+  x: [-1.,  1.]
+  error: 1.7346077862651346e-11
+
+tests/test_originals.py::test_problem_5:
+  nfvals: 5715
+  fmin: 7.555977378173125e-21
+  x: [-1.,  1.]
+  error: 1.9528685213694042e-10
+
+tests/test_originals.py::test_problem_6:
+  nfvals: 101
+  fmin: -1.4142135623730951
+  x: [0.70710678, 0.70710678]
+  error: 3.6136646556455513e-11
+
+tests/test_originals.py::test_problem_7:
+  nfvals: 61
+  fmin: -3.0
+  x: [-4.35152397e-21, -3.00000000e+00, -3.00000000e+00]
+  error: 6.1333280364249595e-19
+
+tests/test_originals.py::test_problem_8:
+  nfvals: 205
+  fmin: -44.0
+  x: [-8.56331170e-11,  9.99999999e-01,  2.00000000e+00, -1.00000000e+00]
+  error: 1.0182404172568997e-09
+
+tests/test_originals.py::test_problem_9:
+  nfvals: 618
+  fmin: 680.6300573744021
+  x: [2.33049938,  1.95137237, -0.47754138,  4.36572623, -0.62448697,  1.03813102,
+  1.59422671]
+  error: 6.468044944343676e-07
+
+tests/test_originals.py::test_problem_10:
+  nfvals: 444
+  fmin: -0.8660254037844386
+  x: [6.88380058e-01,  7.25350188e-01, -2.83981661e-01,  9.58829712e-01,
+  6.88380058e-01,  7.25350188e-01, -2.83981660e-01,  9.58829712e-01,
+  -7.97346702e-33]
+  error: 1.1691085419729407e-19
+

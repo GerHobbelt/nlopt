@@ -1,5 +1,8 @@
 import sys
+import yaml
 import logging
+import functools
+from dataclasses import dataclass
 
 import numpy as np
 import pytest
@@ -18,10 +21,34 @@ RHOBEG = .5
 RHOEND = 1e-12
 
 
+with open('tests/tests.yml', 'r') as fp:
+    RESULTS = yaml.load(fp, Loader=yaml.Loader)
+    
+@dataclass
+class Result:
+    nfvals: int
+    fmin: float
+    x: np.array
+    error: float
+    
+
+def check_result(pathtest, test_name, opt, error, rd=9):
+    pathtest = pathtest[pathtest.find('pycobyla'):]
+    pathtest = pathtest[pathtest.find('/')+1:]
+    key = f'{pathtest}::{test_name}'
+
+    result = Result(**RESULTS[key])
+    assert (opt.nfvals - result.nfvals) == 0
+    assert (error - result.error).round(rd) == 0
+
+
+check_originals = functools.partial(check_result, __file__)
+    
+    
 def opt_info(opt, error):
     logger.info('')
     logger.info(f'nfvals: {opt.nfvals}')
-    logger.info(f'fmin: {opt.fmin}')
+    logger.info(f'fmin: {opt.fmin:}')
     logger.info(f'x: {opt.x}')
     logger.info(f'error: {error}')
     
@@ -34,7 +61,7 @@ def cobyla_tester(F, C, x, known_x, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=7500, t
     opt_info(opt, error)
     assert error < tol
 
-    return opt
+    return opt, error
 
 
 def test_problem_1():
@@ -49,7 +76,8 @@ def test_problem_1():
     x = np.ones(2)
     known_x = np.array((-1, 0))
 
-    cobyla_tester(F, C, x, known_x)
+    opt, error = cobyla_tester(F, C, x, known_x)
+    check_originals('test_problem_1', opt, error, rd=10)
 
 
 def test_problem_2():
@@ -66,7 +94,8 @@ def test_problem_2():
     x = np.ones(2)
     known_x = np.array((1 / (2 ** .5), -1 / (2 ** .5)))
 
-    cobyla_tester(F, C, x, known_x)
+    opt, error = cobyla_tester(F, C, x, known_x)
+    check_originals('test_problem_2', opt, error)
 
 
 def test_problem_3():
@@ -83,7 +112,8 @@ def test_problem_3():
     x = np.ones(3)
     known_x = np.array(((1 / (3 ** .5), 1 / (6 ** .5), -1 / 3)))
 
-    cobyla_tester(F, C, x, known_x)
+    opt, error = cobyla_tester(F, C, x, known_x)
+    check_originals('test_problem_3', opt, error)
 
 
 def test_problem_4():
@@ -98,7 +128,8 @@ def test_problem_4():
     x = np.ones(2)
     known_x = np.array((-1, 1))
 
-    cobyla_tester(F, C, x, known_x)
+    opt, error = cobyla_tester(F, C, x, known_x)
+    check_originals('test_problem_4', opt, error)
 
 
 def test_problem_5():
@@ -113,7 +144,8 @@ def test_problem_5():
     x = np.ones(2)
     known_x = np.array((-1, 1))
 
-    cobyla_tester(F, C, x, known_x)
+    opt, error = cobyla_tester(F, C, x, known_x)
+    check_originals('test_problem_5', opt, error)
 
 
 def test_problem_6():
@@ -134,7 +166,8 @@ def test_problem_6():
     x = np.ones(2)
     known_x = np.array(((.5 ** .5), (.5 ** .5)))
 
-    cobyla_tester(F, C, x, known_x)
+    opt, error = cobyla_tester(F, C, x, known_x)
+    check_originals('test_problem_6', opt, error)
 
     
 def test_problem_7():
@@ -156,7 +189,8 @@ def test_problem_7():
     x = np.ones(3)
     known_x = np.array((0, -3, -3))
 
-    cobyla_tester(F, C, x, known_x)
+    opt, error = cobyla_tester(F, C, x, known_x)
+    check_originals('test_problem_7', opt, error)
 
 
 def test_problem_8():
@@ -180,7 +214,8 @@ def test_problem_8():
     x = np.ones(4)
     known_x = np.array((0, 1, 2, -1))
 
-    cobyla_tester(F, C, x, known_x)
+    opt, error = cobyla_tester(F, C, x, known_x)
+    check_originals('test_problem_8', opt, error)
 
     
 def test_problem_9():
@@ -211,7 +246,8 @@ def test_problem_9():
         (2.330499, 1.951372, -.4775414, 4.365726, -.624487, 1.038131, 1.594227)
     )
     
-    cobyla_tester(F, C, x, known_x, tol=1e-6)
+    opt, error = cobyla_tester(F, C, x, known_x, tol=1e-6)
+    check_originals('test_problem_9', opt, error)
 
 
 def test_problem_10():
@@ -275,4 +311,7 @@ def test_problem_10():
     error = sum((opt.x - known_x) ** 2)
     opt_info(opt, error)
     assert error < 1e-6
+
+    check_originals('test_problem_10', opt, error, rd=9)
+    
 

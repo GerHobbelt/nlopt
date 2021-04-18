@@ -24,10 +24,10 @@ class Trstlp:
         self.dxnew = None # n
         
         self.sdirn = np.zeros(self.cobyla.n)
-        self.resmax, self.icon = max(zip((0, *self.cobyla.con), (-1, *range(self.cobyla.m))))
+        self.resmax, self.icon = max(zip((0, *self.cobyla.neg_cmin), (-1, *range(self.cobyla.m))))
         self.iact = np.arange(self.cobyla.m + 1)
         self.iact[-1] = -1
-        self.vmultc = np.array((*(self.resmax - self.cobyla.con), 0), dtype=np.float64)
+        self.vmultc = np.array((*(self.resmax - self.cobyla.neg_cmin), 0), dtype=np.float64)
         self.vmultd = np.zeros(self.cobyla.m + 1, dtype=np.float64)
 
         # Data to return
@@ -310,7 +310,7 @@ class Trstlp:
             resold, self.resmax = self.resmax, 0
             for k in range(0, self.nact + 1):
                 kk = self.iact[k]
-                temp = self.cobyla.con[kk] - (self.cobyla.a[kk] @ self.dxnew)
+                temp = self.cobyla.neg_cmin[kk] - (self.cobyla.a[kk] @ self.dxnew)
                 self.resmax = max(self.resmax, temp)
                 
         # Set VMULTD to the VMULTC vector that would occur if DX became DXNEW. A
@@ -343,7 +343,7 @@ class Trstlp:
         # Complete VMULTC by finding the new constraint residuals
         self.dxnew = self.dx + (self.step * self.sdirn)
         if ((self.mcon - 1) > self.nact):
-            confval = self.cobyla.orig_con[:-1]
+            confval = self.cobyla.neg_cfmin
             for k in range(self.nact + 1, self.mcon):
                 kk = self.iact[k]
                 temp = self.cobyla.a[kk] * self.dxnew
