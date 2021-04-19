@@ -226,7 +226,7 @@ class Cobyla:
         # after the constraint gradients in the array A. The vector W is used for
         # working space
         neg_cfmin = self.neg_cfmin  # -self.datmat[-1, :-1]
-        self.neg_cmin = neg_cfmin[:-1] 
+        self.neg_cmin = neg_cfmin[:-1]  # JSX, 2021: Original reuses self.con 
 
         diff = (self.datmat[:-1, :-1] + neg_cfmin)  # Matrix diff: (constrains,fx) vs best
         self.a = (self.simi @ diff).T
@@ -264,7 +264,7 @@ class Cobyla:
         dx, kdx = (-dx, -kdx) if cond else (dx, kdx)
         self.sim[jdrop] = dx
 
-        self.simi[..., jdrop] *= kdx  # Original: self.simi[..., jdrop] /= (self.simi[..., jdrop] @ dx)
+        self.simi[..., jdrop] *= kdx  #  JSX, 2021: Original: self.simi[..., jdrop] /= (self.simi[..., jdrop] @ dx)
         temp = dx @ self.simi
         target = self.simi[..., jdrop].copy()
         self.simi -= np.broadcast_to(target, self.simi.shape).T * temp
@@ -322,7 +322,6 @@ class Cobyla:
 
         # Predict the change to F and the new maximum constraint violation if the
         # variables are altered from x(0) to x(0)+DX
-        self.fval = 0
         temp = self.a @ dx
         cdiff, ftemp = self.neg_cmin - temp[:-1], -temp[-1]
         resnew = max((0, *cdiff))
