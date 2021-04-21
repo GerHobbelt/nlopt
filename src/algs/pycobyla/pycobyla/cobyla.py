@@ -20,9 +20,9 @@ class Cobyla:
     NEW_ITERATION = 1
 
     # Constants
-    DELTA = 1.1
     ALPHA = 0.25
     BETA = 2.1
+    DELTA = 1.1  # Set by software, 1 < DELTA <= BETA
     GAMMA = 0.5
 
     # Experimental constants
