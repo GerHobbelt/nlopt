@@ -371,6 +371,8 @@ class Cobyla:
         # vertices of the current simplex, the change being mandatory if TRURED is
         # positive. Firstly, JDROP is set to the index of the vertex that is to be
         # replaced
+
+        # JSX: This is not seems explained in the paper
         jdrop = -1
         ratio = 1 if (trured <= 0) else 0
         temp = abs(dx @ self.simi)
@@ -382,28 +384,23 @@ class Cobyla:
         edgmax = self.DELTA * self.rho
         mask = (sigbar >= self.parsig) | (sigbar >= self.vsig)
 
-        lflag = None
         if mask.any():
             temp = ((dx - self.sim) ** 2).sum(axis=1) ** .5 if trured > 0 else self.veta
             temp = temp[mask]
             idx = np.arange(len(mask))[mask]
             for j, ttemp in zip(idx, temp):
                 if ttemp > edgmax:
-                    lflag = j
-                    edgmax = ttemp
+                    jdrop, edgmax = j, ttemp
 
-        if lflag is not None:
-            jdrop = lflag
         if jdrop == -1:
             return self.L550_update_params(ifull)
 
         # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
         self.sim[jdrop] = dx
-        temp = dx @ self.simi[..., jdrop]
-        self.simi[..., jdrop] /= temp
+        self.simi[..., jdrop] /= (dx @ self.simi[..., jdrop])
         target = self.simi[..., jdrop].copy()
         temp = dx @ self.simi
-        self.simi -= np.broadcast_to(target, self.simi.shape).T * temp
+        self.simi -= (np.broadcast_to(target, self.simi.shape).T * temp)
         self.simi[..., jdrop] = target
         self.datmat[jdrop] = self.current_values
 
@@ -419,7 +416,7 @@ class Cobyla:
         '''
         L550:
 
-        Updates mu param. Updates rho param.
+        Updates mu and rho params.
         '''
         if (self.iflag is False):
             self.ibrnch = False
@@ -431,16 +428,16 @@ class Cobyla:
             self.rho = self.rhoend if cond else (self.RHO_REDUX_FACTOR * self.rho)
             if self.parmu > 0:
                 denom = 0
-                for col, ref in zip(self.datmat[:-1, :-2].T, self.datmat[-1, :-2]):
-                    cmin = min((ref, col.min()))
-                    cmax = max((ref, col.max()))
+                ccmin = self.datmat[..., :-2].min(axis=0)
+                ccmax = self.datmat[..., :-2].max(axis=0)
+                for cmin, cmax in zip(ccmin, ccmax):
                     if (cmin < (cmax / 2)):
                         temp = max(cmax, 0) - cmin
                         denom = temp if denom <= 0 else min(denom, temp)
-                        
-                temp = self.datmat[..., -2].T
-                cmin = temp.min()
-                cmax = temp.max()
+
+                vresmax = self.datmat[..., -2]
+                cmin = vresmax.min()
+                cmax = vresmax.max()
                 if denom == 0:
                     self.parmu = 0
                 elif ((cmax - cmin) < (self.parmu * denom)):
