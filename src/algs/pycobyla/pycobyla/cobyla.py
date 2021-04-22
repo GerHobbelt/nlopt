@@ -435,13 +435,13 @@ class Cobyla:
                         temp = max(cmax, 0) - cmin
                         denom = temp if denom <= 0 else min(denom, temp)
 
-                vresmax = self.datmat[..., -2]
-                cmin = vresmax.min()
-                cmax = vresmax.max()
+                vfx = self.datmat[..., -2]
+                fmin = vfx.min()
+                fmax = vfx.max()
                 if denom == 0:
                     self.parmu = 0
-                elif ((cmax - cmin) < (self.parmu * denom)):
-                    self.parmu = (cmax - cmin) / denom
+                elif ((fmax - fmin) < (self.parmu * denom)):
+                    self.parmu = (fmax - fmin) / denom
             return self.NEW_ITERATION
 
         return self.L600_L620_terminate(ifull)
