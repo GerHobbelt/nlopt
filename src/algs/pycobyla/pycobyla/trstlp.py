@@ -11,17 +11,17 @@ class Trstlp:
         self.cobyla = cobyla
         
         self.mcon = self.cobyla.m
-        self.z = np.eye(self.cobyla.n) # n * n
-        self.zdota = np.zeros(self.cobyla.n) # n
+        self.z = np.eye(self.cobyla.n)  # n * n
+        self.zdota = np.zeros(self.cobyla.n)  # n
         
         self.icount = 0
         self.optold = 0
         self.nact = -1
         self.nactx = -1
-        self.iout = None # TODO Drop this?
+        self.iout = None  # TODO Drop this?
         self.stpful = None
         self.step = None
-        self.dxnew = None # n
+        self.dxnew = None  # n
         
         self.sdirn = np.zeros(self.cobyla.n)
         self.resmax, self.icon = max(zip((0, *self.cobyla.neg_cmin), (-1, *range(self.cobyla.m))))
@@ -34,7 +34,23 @@ class Trstlp:
         self.ifull = True
         self.dx = np.zeros(self.cobyla.n)
 
+        
+    @classmethod
+    def _get_scalar_product_cond(cls, v1, v2, acca_k=0.1, accb_k=0.2):
+        temp = v1 * v2
+        sp = sum(temp)
+        spabs = sum(abs(temp))
 
+        acca = spabs + (acca_k * abs(sp))
+        accb = spabs + (accb_k * abs(sp)) 
+        cond = (spabs >= acca) or (acca >= accb)
+        
+        # JSX: Cast cond to bool is safe otherwise cond would be numpy.bool_
+        # With no cast, when cond is not meet (False), comparison cond is False
+        # is going to be False but cond == False is going to be True 
+        return bool(cond), sp, spabs
+
+    
     def run(self):
         # End the current stage of the calculation if 3 consecutive iterations
         # have either failed to reduce the best calculated value of the objective
@@ -51,7 +67,7 @@ class Trstlp:
             stage = self.L70()
 
         return self.ifull, self.dx
-
+        
         
     def L70(self):
         optnew = self.resmax if (self.mcon == self.cobyla.m) else -(self.dx @ self.cobyla.a[-1])
@@ -76,32 +92,25 @@ class Trstlp:
         if (self.icon <= self.nact):
             return self.L260()
 
-        kk = self.iact[self.icon]
-        self.dxnew = self.cobyla.a[kk].copy()
+        kk = self.iact[self.icon]  # target constrain idx
+        c_gradient = self.cobyla.a[kk].copy()  # constrain gradient
         tot = 0
 
-        for k in range(self.cobyla.n - 1, -1, -1):
-            if k > self.nact:
-                temp = self.z[k] * self.dxnew
-                sp = sum(temp)
-                spabs = sum(abs(temp))
+        for k in range(self.cobyla.n - 1, self.nact, -1):
+            cond, sp, _ = self._get_scalar_product_cond(self.z[k], c_gradient)
+            sp = 0 if cond else sp
+            
+            if tot == 0:
+                tot = sp 
+            else:
+                temp = ((sp ** 2) + (tot ** 2)) ** 0.5
+                alpha = sp / temp
+                beta = tot / temp
+                tot = temp
+                self.z[k], self.z[k + 1] = \
+                    (alpha * self.z[k]) + (beta * self.z[k + 1]), \
+                    (alpha * self.z[k + 1]) - (beta * self.z[k])
 
-                acca = spabs + (0.1 * abs(sp))
-                accb = spabs + (0.2 * abs(sp))
-                
-                cond = ((spabs >= acca) or (acca >= accb))
-                sp = 0 if cond else sp
-                if tot == 0:
-                    tot = sp 
-                else:
-                    temp = ((sp ** 2) + (tot ** 2)) ** 0.5
-                    alpha = sp / temp
-                    beta = tot / temp
-                    tot = temp
-                    self.z[k], self.z[k + 1] = \
-                        (alpha * self.z[k]) + (beta * self.z[k + 1]), \
-                        (alpha * self.z[k + 1]) - (beta * self.z[k])
-                
         # Add the new constraint if this can be done without a deletion from the
         # active set
         if (tot != 0):
@@ -111,13 +120,13 @@ class Trstlp:
             self.vmultc[self.nact] = 0
             return self.L210(kk)
 
-        if (ratio := self.constant_gradient()) < 0:
+        if (ratio := self._set_vmultd(c_gradient)) < 0:
             return self.L490_termination_chance()
 
         return self.revise_lagrange_multipliers_reorder_active_cons(kk, ratio)
-    
+        
 
-    def constant_gradient(self):
+    def _set_vmultd(self, c_gradient):
         # The next instruction is reached if a deletion has to be made from the
         # active set in order to make room for the new active constraint, because
         # the new constraint gradient is a linear combination of the gradients of 
@@ -126,13 +135,9 @@ class Trstlp:
         # constraint to be deleted, but branch if no suitable index can be found
         ratio = -1
         for k in range(self.nact, -1, -1):
-            temp = self.z[k] * self.dxnew
-            zdotv = sum(temp)
-            zdvabs = sum(abs(temp))
+            cond, zdotv, *_ = self._get_scalar_product_cond(self.z[k], c_gradient)
 
-            acca = zdvabs + (0.1 * (abs(zdotv)))
-            accb = zdvabs + (0.2 * (abs(zdotv)))
-            if ((zdvabs < acca) and (acca < accb)):
+            if cond is False:  # (zdvabs < acca) and (acca < accb)
                 temp = zdotv / self.zdota[k]
                 if ((temp > 0) and (self.iact[k] <= (self.cobyla.m - 1))):
                     tempa = self.vmultc[k] / temp
@@ -141,7 +146,7 @@ class Trstlp:
                         self.iout = k # TODO: Drop this ???
 
                 if (k >= 1):
-                    self.dxnew -= (temp * self.cobyla.a[self.iact[k]])
+                    c_gradient -= (temp * self.cobyla.a[self.iact[k]])
 
                 self.vmultd[k] = temp
             else:
@@ -288,8 +293,8 @@ class Trstlp:
             
         self.step = self.stpful = dd / (temp + sd)
         if(self.mcon == self.cobyla.m):
-            acca = self.step + (self.resmax * 0.1)
-            accb = self.step + (self.resmax * 0.2)
+            acca = self.step + (0.1 * self.resmax)
+            accb = self.step + (0.2 * self.resmax)
             if ((self.step >= acca) or (acca >= accb)):
                 return self.L480_second_stage()
             
@@ -320,14 +325,8 @@ class Trstlp:
         k = self.nact
 
         while True:
-            temp = (self.z[k] * self.dxnew)
-            zdotw = sum(temp)
-            zdwabs = sum(abs(temp))
-
-            acca = zdwabs + (0.1 * abs(zdotw))
-            accb = zdwabs + (0.2 * abs(zdotw))
-            zdotw *= not((zdwabs >= acca) or (acca >= accb))
-        
+            cond, zdotw, *_ = self._get_scalar_product_cond(self.z[k], self.dxnew)
+            zdotw = 0 if cond else zdotw
             self.vmultd[k] = zdotw / self.zdota[k]
             
             if k < 1:
