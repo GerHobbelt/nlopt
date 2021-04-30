@@ -1,3 +1,42 @@
+"""
+/* This subroutine calculates an N-component vector DX by applying the */
+/* following two stages. In the first stage, DX is set to the shortest */
+/* vector that minimizes the greatest violation of the constraints */
+/*   A(1,K)*DX(1)+A(2,K)*DX(2)+...+A(N,K)*DX(N) .GE. B(K), K=2,3,...,M, */
+/* subject to the Euclidean length of DX being at most RHO. If its length is */
+/* strictly less than RHO, then we use the resultant freedom in DX to */
+/* minimize the objective function */
+/*      -A(1,M+1)*DX(1)-A(2,M+1)*DX(2)-...-A(N,M+1)*DX(N) */
+/* subject to no increase in any greatest constraint violation. This */
+/* notation allows the gradient of the objective function to be regarded as */
+/* the gradient of a constraint. Therefore the two stages are distinguished */
+/* by MCON .EQ. M and MCON .GT. M respectively. It is possible that a */
+/* degeneracy may prevent DX from attaining the target length RHO. Then the */
+/* value IFULL=0 would be set, but usually IFULL=1 on return. */
+
+/* In general NACT is the number of constraints in the active set and */
+/* IACT(1),...,IACT(NACT) are their indices, while the remainder of IACT */
+/* contains a permutation of the remaining constraint indices. Further, Z is */
+/* an orthogonal matrix whose first NACT columns can be regarded as the */
+/* result of Gram-Schmidt applied to the active constraint gradients. For */
+/* J=1,2,...,NACT, the number ZDOTA(J) is the scalar product of the J-th */
+/* column of Z with the gradient of the J-th active constraint. DX is the */
+/* current vector of variables and here the residuals of the active */
+/* constraints should be zero. Further, the active constraints have */
+/* nonnegative Lagrange multipliers that are held at the beginning of */
+/* VMULTC. The remainder of this vector holds the residuals of the inactive */
+/* constraints at DX, the ordering of the components of VMULTC being in */
+/* agreement with the permutation of the indices of the constraints that is */
+/* in IACT. All these residuals are nonnegative, which is achieved by the */
+/* shift RESMAX that makes the least residual zero. */
+
+/* Initialize Z and some other variables. The value of RESMAX will be */
+/* appropriate to DX=0, while ICON will be the index of a most violated */
+/* constraint if RESMAX is positive. Usually during the first stage the */
+/* vector SDIRN gives a search direction that reduces all the active */
+/* constraint violations by one simultaneously. */
+"""
+
 import numpy as np
 
 
@@ -92,7 +131,7 @@ class Trstlp:
         if (self.icon <= self.nact):
             return self.L260()
 
-        kk = self.iact[self.icon]  # target constrain idx
+        kk = self.iact[self.icon]  # most violated constrain idx
         c_gradient = self.cobyla.a[kk].copy()  # constrain gradient
         tot = 0
 
@@ -139,16 +178,14 @@ class Trstlp:
 
             if cond is False:  # (zdvabs < acca) and (acca < accb)
                 temp = zdotv / self.zdota[k]
-                if ((temp > 0) and (self.iact[k] <= (self.cobyla.m - 1))):
+                if ((temp > 0) and (self.iact[k] < self.cobyla.m)):
                     tempa = self.vmultc[k] / temp
                     if (ratio < 0) or (tempa < ratio):
                         ratio = tempa
                         self.iout = k # TODO: Drop this ???
 
-                if (k >= 1):
-                    c_gradient -= (temp * self.cobyla.a[self.iact[k]])
-
-                self.vmultd[k] = temp
+                c_gradient -= (temp * self.cobyla.a[self.iact[k]]) if (k >=1) else 0
+                self.vmultd[k] = temp  # Nonnegative Lagrange multipler
             else:
                 self.vmultd[k] = 0
         

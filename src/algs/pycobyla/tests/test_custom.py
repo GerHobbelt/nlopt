@@ -1,4 +1,3 @@
-import logging
 import functools
 
 import numpy as np
@@ -192,7 +191,7 @@ def test_problem_shifted_paraboloid():
     x = np.ones(2)
     
     cobyla_tester(F, C, x, x0)
-    
+
 
 def test_stop_fault():
     F = lambda x: (2 - np.cos(x[0]) + x[1] ** 2) ** 2
