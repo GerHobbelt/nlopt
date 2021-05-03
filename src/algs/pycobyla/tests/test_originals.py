@@ -23,6 +23,7 @@ RHOEND = 1e-12
 
 with open('tests/tests.yml', 'r') as fp:
     RESULTS = yaml.load(fp, Loader=yaml.Loader)
+
     
 @dataclass
 class Result:

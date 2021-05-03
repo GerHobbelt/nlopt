@@ -63,13 +63,11 @@ def test_problem_min_at_the_edge_corner_boundary():
 
 
 def test_problem_min_out_of_the_boundary():
-    G = tc.neg_gaussian
-
     r_circle = lambda x, radius, sig: sig * (((radius ** 2) - (x ** 2)) ** 0.5)
     
     radius = 2
     sig = np.random.choice((-1, 1))
-    x_circle = radius * np.random.random()
+    x_circle = np.random.uniform(low=-radius, high=radius)
     y_circle = r_circle(x_circle, radius=radius, sig=sig)
     mu = np.array((x_circle, y_circle))
     
@@ -88,12 +86,11 @@ def test_problem_min_out_of_the_boundary():
 
     
 def test_problem_min_out_of_the_boundary_circle():
-    G = tc.neg_gaussian
-
     r_circle = lambda x, radius, sig: sig * (((radius ** 2) - (x ** 2)) ** 0.5)
     
     radius = 2
     sig = np.random.choice((-1, 1))
+    x_circle = np.random.uniform(low=-radius, high=radius)
     x_circle = radius * np.random.random()
     y_circle = r_circle(x_circle, radius=radius, sig=sig)
     mu = np.array((x_circle, y_circle))

@@ -203,6 +203,24 @@ def test_stop_fault():
     cobyla_tester(F, C, x, known_x, maxfun=667)
     cobyla_tester(F, C, x, known_x, maxfun=668)
 
+
+def test_powell_paper_bad_convergence_problem():
+    '''
+    Test
+
+    F(x) = -abs(x - 3)
+
+    C1(x) = 0.25 - abs(x) >= 0
+    
+    '''
+    F = lambda x: -abs(x[0] - 3)
+    c1 = lambda x: 0.25 - abs(x)
+
+    C = (c1,)
+    x = np.ones(1)
+    known_x = np.array((-0.25,))
+
+    opt = cobyla_tester(F, C, x, known_x)
     
 
 

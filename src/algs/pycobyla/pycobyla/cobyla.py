@@ -155,7 +155,7 @@ class Cobyla:
             raise UserWarning('cobyla: user requested end of minimitzation')
 
         c_iter = (constrain(self.x) for constrain in self.C)
-        self.con = np.array(tuple(c_iter), dtype=self.float)
+        self.con = np.array(tuple(c_iter), dtype=self.float).ravel()
         self.resmax = max((0, *(-self.con)))
         
         
