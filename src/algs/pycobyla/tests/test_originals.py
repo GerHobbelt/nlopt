@@ -1,12 +1,14 @@
 import sys
 import yaml
 import logging
+import pathlib
 import functools
 from dataclasses import dataclass
 
 import numpy as np
 import pytest
 
+import pycobyla
 from pycobyla import Cobyla
 
 
@@ -20,8 +22,8 @@ logger.setLevel(logging.INFO)
 RHOBEG = .5
 RHOEND = 1e-12
 
-
-with open('tests/tests.yml', 'r') as fp:
+REPO_PATH = pathlib.Path(pycobyla.__file__).parent.parent
+with open(REPO_PATH / 'tests/tests.yml', 'r') as fp:
     RESULTS = yaml.load(fp, Loader=yaml.Loader)
 
     

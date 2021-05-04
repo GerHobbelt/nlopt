@@ -28,6 +28,39 @@ def paraboloid(x, a=1, b=1):
     return ((x[0] / a) ** 2) + ((x[1] / b) ** 2)
         
 
+def pyramid(x, center=np.zeros(2), width=1, height=1):
+    '''
+    '''
+    cc = np.array(x) - np.array(center)
+    
+    v1 = np.array((1, 1)) * (.5 ** .5)
+    v2 = np.array((1, -1)) * (.5 ** .5)
+
+    cond1 = v1 @ cc
+    cond2 = v2 @ cc
+    xx, yy = abs(cc)
+    ww = width / 2
+
+
+    if (cond1 >= 0) and (cond2 >= 0):
+        # Q1
+        hh = (1 - (xx / ww))
+        
+    elif (cond1 >= 0) and (cond2 < 0):
+        # Q2
+        hh = (1 - (yy / ww))
+        
+    elif (cond1 < 0) and (cond2 <0):
+        # Q3
+        hh = (1 - (xx / ww))
+        
+    else:
+        #Q4
+        hh = (1 - (yy / ww))
+
+    return hh * height if 0 < hh <= 1 else 0
+
+
 def test_problem_gaussian_2d():
     '''
     Test gaussian 2d Gaussian with mu=(0,0), sig=(1,1) 
@@ -221,6 +254,21 @@ def test_powell_paper_bad_convergence_problem():
     known_x = np.array((-0.25,))
 
     opt = cobyla_tester(F, C, x, known_x)
+
+
+def test_pyramid_problem():
+    '''
+    Test pyramid
+    
+    '''
+    F = lambda x: -pyramid(x, center=np.zeros(2))
+
+    C = ()
+    x = np.array((0.5 - 1e-16, 0))
+    known_x = np.zeros(2)
+
+    opt = cobyla_tester(F, C, x, known_x)
+    
     
 
 
