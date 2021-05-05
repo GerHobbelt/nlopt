@@ -87,7 +87,6 @@ class Cobyla:
     def data(self):  # pragma: no cover
         print(f'nfvals: {self.nfvals}')
         print(f'x: {self.x}')
-        print(f'current_values: {self.current_values}')
         print(f'optimal_vertex: {self.optimal_vertex}')
         print(f'datmat: \n{self.datmat}')
         print(f'a: \n{self.a}')
@@ -389,7 +388,8 @@ class Cobyla:
             temp = temp[mask]
             idx = np.arange(len(mask))[mask]
             for j, ttemp in zip(idx, temp):
-                if ttemp > edgmax:
+                #if ttemp > edgmax:  # JSX: Bad conditions could degenerate in a bad solution 
+                if (ttemp - edgmax) > 1e-17:
                     jdrop, edgmax = j, ttemp
 
         if jdrop == -1:

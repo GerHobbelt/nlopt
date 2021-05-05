@@ -50,7 +50,7 @@ def pyramid(x, center=np.zeros(2), width=1, height=1):
         # Q2
         hh = (1 - (yy / ww))
         
-    elif (cond1 < 0) and (cond2 <0):
+    elif (cond1 < 0) and (cond2 < 0):
         # Q3
         hh = (1 - (xx / ww))
         
@@ -269,7 +269,18 @@ def test_pyramid_problem():
 
     opt = cobyla_tester(F, C, x, known_x)
     
+
+@pytest.mark.skip('Explore this problem')
+def test_pyramid_random_safe_start_problem():
+    '''
+    Test pyramid with random start position
     
+    '''
+    F = lambda x: -pyramid(x, center=np.zeros(2), width=2, height=1)
 
+    C = ()
+    x = np.random.random(2) - 0.5
+    known_x = np.zeros(2)
 
+    opt = cobyla_tester(F, C, x, known_x)
 
