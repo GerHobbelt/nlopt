@@ -3,7 +3,6 @@ import functools
 import numpy as np
 import pytest
 
-from pycobyla import Cobyla
 from tests.test_originals import cobyla_tester
 
 
@@ -28,35 +27,26 @@ def paraboloid(x, a=1, b=1):
     return ((x[0] / a) ** 2) + ((x[1] / b) ** 2)
         
 
-def pyramid(x, center=np.zeros(2), width=1, height=1):
-    '''
-    '''
-    cc = np.array(x) - np.array(center)
-    
-    v1 = np.array((1, 1)) * (.5 ** .5)
-    v2 = np.array((1, -1)) * (.5 ** .5)
-
-    cond1 = v1 @ cc
-    cond2 = v2 @ cc
-    xx, yy = abs(cc)
+def pyramid(x, center=np.zeros(2), width=2, height=1):
     ww = width / 2
-
-
-    if (cond1 >= 0) and (cond2 >= 0):
-        # Q1
-        hh = (1 - (xx / ww))
+    xx, yy = cc = np.array(x) - np.array(center)
+    abs_x, abs_y = abs(cc)
+    
+    if (yy <= xx) and (yy > -xx):
+        # sector 1
+        hh = (1 - (abs_x / ww))
         
-    elif (cond1 >= 0) and (cond2 < 0):
-        # Q2
-        hh = (1 - (yy / ww))
+    elif (yy > xx) and (yy > -xx):
+        # sector 2
+        hh = (1 - (abs_y / ww))
         
-    elif (cond1 < 0) and (cond2 < 0):
-        # Q3
-        hh = (1 - (xx / ww))
+    elif (yy > xx) and (yy <= -xx):
+        # sector 3
+        hh = (1 - (abs_x / ww))
         
     else:
-        #Q4
-        hh = (1 - (yy / ww))
+        # sector 4
+        hh = (1 - (abs_y / ww))
 
     return hh * height if 0 < hh <= 1 else 0
 
@@ -261,26 +251,42 @@ def test_pyramid_problem():
     Test pyramid
     
     '''
-    F = lambda x: -pyramid(x, center=np.zeros(2))
+    F = lambda x: -pyramid(x, center=np.zeros(2), width=2, height=1)
 
     C = ()
     x = np.array((0.5 - 1e-16, 0))
     known_x = np.zeros(2)
 
     opt = cobyla_tester(F, C, x, known_x)
+
+
+@pytest.mark.skip('This problem has very bad response')
+def test_pyramid_problem_fails():
+    '''
+    Test pyramid with bad response
+    
+    '''
+    F = lambda x: -pyramid(x, center=np.zeros(2), width=2, height=1)
+
+    C = ()
+    x = np.array((0.8418772017014113373534200945869088173, 0.8139157946609998361964244395494461060))
+    known_x = np.zeros(2)
+
+    opt = cobyla_tester(F, C, x, known_x, tol=1e-6)
     
 
-@pytest.mark.skip('Explore this problem')
+@pytest.mark.skip('Better with constrain but still poor')
 def test_pyramid_random_safe_start_problem():
     '''
     Test pyramid with random start position
     
     '''
     F = lambda x: -pyramid(x, center=np.zeros(2), width=2, height=1)
-
-    C = ()
-    x = np.random.random(2) - 0.5
+    c1 = lambda x: .5 - sum(x ** 2)
+    
+    C = (c1,)
+    x = np.random.uniform(low=-1, high=1, size=2)
     known_x = np.zeros(2)
 
-    opt = cobyla_tester(F, C, x, known_x)
+    opt = cobyla_tester(F, C, x, known_x, tol=1e-1)
 

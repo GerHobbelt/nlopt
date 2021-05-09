@@ -147,3 +147,4 @@ cython_debug/
 /docs/branch
 .DS_Store
 cobyla2c
+tests/*.yaml

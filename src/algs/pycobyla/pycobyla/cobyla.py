@@ -388,8 +388,7 @@ class Cobyla:
             temp = temp[mask]
             idx = np.arange(len(mask))[mask]
             for j, ttemp in zip(idx, temp):
-                #if ttemp > edgmax:  # JSX: Bad conditions could degenerate in a bad solution 
-                if (ttemp - edgmax) > 1e-17:
+                if ttemp > edgmax:  # JSX: Bad conditions could degenerate in take wrong jdrop that gives bad solution
                     jdrop, edgmax = j, ttemp
 
         if jdrop == -1:
