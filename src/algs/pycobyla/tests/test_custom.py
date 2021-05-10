@@ -51,6 +51,31 @@ def pyramid(x, center=np.zeros(2), width=2, height=1):
     return hh * height if 0 < hh <= 1 else 0
 
 
+def pyramid_faces(x, center=np.zeros(2), radius=1, height=1, faces=4):
+    assert faces > 2
+
+    xx, yy = cc = np.array(x) - np.array(center)
+    phi = np.arctan2(yy, xx)
+
+    stp = 2 * np.pi / faces
+    a1 = np.floor(phi / stp) * stp
+    a2 = a1 + stp
+    
+    q1 = radius * np.array((np.cos(a1), np.sin(a1)))
+    q2 = radius * np.array((np.cos(a2), np.sin(a2)))
+    uu = q2 - q1
+    vv = np.array((-uu[1], uu[0]))
+    vv = vv / np.linalg.norm(vv)
+
+    hh = (cc - q1) @ vv
+    if hh < 0:
+        return 0
+
+    c1 = np.linalg.norm(uu) / 2  
+    total = ((radius ** 2) - (c1 ** 2)) ** .5
+    return (hh / total) * height
+
+
 def test_problem_gaussian_2d():
     '''
     Test gaussian 2d Gaussian with mu=(0,0), sig=(1,1) 
