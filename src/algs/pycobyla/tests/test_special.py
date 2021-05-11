@@ -14,29 +14,45 @@ def test_pyramid_bad_optimization_due_to_data_precision():
 
     See: L440_update_simplex, JSX tag
     '''
-    F = lambda x: -tc.pyramid(x, center=np.zeros(2), width=2, height=1)
+    F = functools.partial(tc.pyramid, center=np.zeros(2), width=2, height=-1)
     C = ()
     x = np.array((0.94388211340220107281596, -0.61268428625789606023488))
     opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-8, maxfun=3500)
     opt.run()
 
-    print(opt.x)
+    print(f'\nOriginal: {x}')
+    print(f'Optimize: {opt.x}')
+    print(f'Error: {sum(opt.x ** 2)}')
+
+
+def test_4_faces_pyramid_bad_optimization_due_to_data_precision():
+    radius = 2
+    F = functools.partial(tc.pyramid_faces, center=(0, 0), radius=radius, height=-1, faces=4)
+    C = ()
+    x = np.array((0.94388211340220107281596, -0.61268428625789606023488))
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-8, maxfun=3500)
+    opt.run()
+
+    print(f'\nOriginal: {x}')
+    print(f'Optimize: {opt.x}')
+    print(f'Error: {sum(opt.x ** 2)}')
     
 
 def test_4_faces_pyramid_bad_optimization_loop():
     TOL = 1e-3
     counter = total = 0
 
-    radius = 2 * (2 **.5)
+    radius = 2
     F = functools.partial(tc.pyramid_faces, center=(0, 0), radius=radius, height=-1, faces=4)
-    C = ()
+    c1 = lambda x: 1 - sum(x ** 2)
+    C = (c1, )
     known_x = np.zeros(2)
 
     print(f'\nError > {TOL}')
     while (True):
         total += 1
         x = np.random.uniform(low=-1, high=1, size=2)
-        opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-8, maxfun=3500)
+        opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
         opt.run()
     
         error = sum((opt.x - known_x) ** 2) ** .5

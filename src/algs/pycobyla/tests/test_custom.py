@@ -64,14 +64,15 @@ def pyramid_faces(x, center=np.zeros(2), radius=1, height=1, faces=4):
     q1 = radius * np.array((np.cos(a1), np.sin(a1)))
     q2 = radius * np.array((np.cos(a2), np.sin(a2)))
     uu = q2 - q1
+    norm = np.linalg.norm(uu)
     vv = np.array((-uu[1], uu[0]))
-    vv = vv / np.linalg.norm(vv)
+    vv = vv / norm
 
     hh = (cc - q1) @ vv
     if hh < 0:
         return 0
 
-    c1 = np.linalg.norm(uu) / 2  
+    c1 = norm / 2  
     total = ((radius ** 2) - (c1 ** 2)) ** .5
     return (hh / total) * height
 
