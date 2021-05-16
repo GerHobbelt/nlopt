@@ -36,14 +36,15 @@
 /* vector SDIRN gives a search direction that reduces all the active */
 /* constraint violations by one simultaneously. */
 """
+from enum import auto
 
 import numpy as np
 
 
 class Trstlp:
-    FINISH = 0
-    KEEP_STAGE = 1
-    CHANGE_STAGE = 2
+    FINISH = auto()
+    KEEP_STAGE = auto()
+    CHANGE_STAGE = auto()
     
     
     def __init__(self, cobyla: 'Cobyla'):

@@ -6,6 +6,7 @@ Reviewed from original paper.
 '''
 
 import logging
+from enum import auto
 
 import numpy as np
 
@@ -16,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 class Cobyla:
-    FINISH = 0
-    NEW_ITERATION = 1
+    FINISH = auto()
+    NEW_ITERATION = auto()
 
-    # Constants
+    # Constants (numerical test that did not provide clear answer)
     ALPHA = 0.25
     BETA = 2.1
     DELTA = 1.1  # Set by software, 1 < DELTA <= BETA
@@ -82,7 +83,7 @@ class Cobyla:
         # Params
         self.parmu = 0
 
-
+        
     @property
     def data(self):  # pragma: no cover
         print(f'nfvals: {self.nfvals}')
@@ -92,6 +93,9 @@ class Cobyla:
         print(f'a: \n{self.a}')
         print(f'sim: \n{self.sim}')
         print(f'simi: \n{self.simi}')
+        print(f'optimal vertex: \n{self.optimal_vertex}')
+        print(f'parmu: {self.parmu}')
+        print(f'rho: {self.rho}')
 
         
     @property
@@ -371,7 +375,7 @@ class Cobyla:
         # positive. Firstly, JDROP is set to the index of the vertex that is to be
         # replaced
 
-        # JSX: This is not seems explained in the paper
+        # JSX: This is not seems to be explained in the original paper
         jdrop = -1
         ratio = 1 if (trured <= 0) else 0
         temp = abs(dx @ self.simi)
@@ -388,20 +392,13 @@ class Cobyla:
             temp = temp[mask]
             idx = np.arange(len(mask))[mask]
             for j, ttemp in zip(idx, temp):
-                if ttemp > edgmax:  # JSX: Bad conditions could degenerate in take wrong jdrop that gives bad solution
+                if ttemp > edgmax: 
                     jdrop, edgmax = j, ttemp
 
         if jdrop == -1:
             return self.L550_update_params(ifull)
 
-        # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
-        self.sim[jdrop] = dx
-        self.simi[..., jdrop] /= (dx @ self.simi[..., jdrop])
-        target = self.simi[..., jdrop].copy()
-        temp = dx @ self.simi
-        self.simi -= (np.broadcast_to(target, self.simi.shape).T * temp)
-        self.simi[..., jdrop] = target
-        self.datmat[jdrop] = self.current_values
+        self._update_simplex_with_x_start(dx, jdrop)
 
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= (self.RHO_ACCEPTABILITY_2 * prerem)):
@@ -410,6 +407,17 @@ class Cobyla:
 
         return self.L550_update_params(ifull)
 
+
+    def _update_simplex_with_x_start(self, dx, jdrop):
+        # Revise the simplex by updating the elements of SIM, SIMI and DATMAT
+        self.sim[jdrop] = dx
+        self.simi[..., jdrop] /= (dx @ self.simi[..., jdrop])
+        target = self.simi[..., jdrop].copy()
+        temp = dx @ self.simi
+        self.simi -= (np.broadcast_to(target, self.simi.shape).T * temp)
+        self.simi[..., jdrop] = target
+        self.datmat[jdrop] = self.current_values
+    
         
     def L550_update_params(self, ifull):
         '''

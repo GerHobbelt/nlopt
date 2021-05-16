@@ -273,6 +273,11 @@ def test_problem_10():
     opt = Cobyla(x, F, C, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500)
     opt.run()
 
+    from pycobyla.gcobyla import GCobyla
+    g_opt = GCobyla(x, F, C, rhobeg=RHOBEG, rhoend=RHOEND, maxfun=3500)
+    for _ in g_opt.g_run(): pass  
+    
+
     known_x = np.zeros(9)
     tempa = opt.x[[0,2,4,6]].sum()
     tempb = opt.x[[1,3,5,7]].sum()

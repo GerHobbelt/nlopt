@@ -28,9 +28,10 @@ def test_pyramid_bad_optimization_due_to_data_precision():
 def test_4_faces_pyramid_bad_optimization_due_to_data_precision():
     radius = 2
     F = functools.partial(tc.pyramid_faces, center=(0, 0), radius=radius, height=-1, faces=4)
-    C = ()
-    x = np.array((0.94388211340220107281596, -0.61268428625789606023488))
-    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-8, maxfun=3500)
+    c1 = lambda x: 1 - sum(x ** 2)
+    C = (c1,)
+    x = np.array((0.59783162182861104838594, 0.95270742661612928259274))
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-17, maxfun=3500)
     opt.run()
 
     print(f'\nOriginal: {x}')
@@ -39,7 +40,7 @@ def test_4_faces_pyramid_bad_optimization_due_to_data_precision():
     
 
 def test_4_faces_pyramid_bad_optimization_loop():
-    TOL = 1e-3
+    TOL = 1e-2
     counter = total = 0
 
     radius = 2
