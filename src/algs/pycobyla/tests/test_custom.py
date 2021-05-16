@@ -269,7 +269,7 @@ def test_powell_paper_bad_convergence_problem():
     x = np.ones(1)
     known_x = np.array((-0.25,))
 
-    opt = cobyla_tester(F, C, x, known_x)
+    cobyla_tester(F, C, x, known_x)
 
 
 def test_pyramid_problem():
@@ -283,7 +283,37 @@ def test_pyramid_problem():
     x = np.array((0.5 - 1e-16, 0))
     known_x = np.zeros(2)
 
-    opt = cobyla_tester(F, C, x, known_x)
+    cobyla_tester(F, C, x, known_x)
+
+
+def test_linear_and_nonlinear_programming_pag_544_prob_4():
+    '''
+    Chapter 16, problem 4 (page 544) from book Linear and Nonlinear Programming
+    Authors: Stephen P. Nash, Ariela Sofer
+    
+    '''
+    F = lambda x:  -1 / ((x[0] ** 2) + 1)
+    c1 = lambda x: x[0] - 1
+
+    C = (c1,)
+    x = np.array((5,))
+    known_x = np.array((1,))
+    opt, *_ = cobyla_tester(F, C, x, known_x, tol=1e-12)
+
+    
+def test_linear_and_nonlinear_programming_pag_544_prob_4_random_start():
+    '''
+    Chapter 16, problem 4 (page 544) from book Linear and Nonlinear Programming
+    Authors: Stephen P. Nash, Ariela Sofer
+    
+    '''
+    F = lambda x:  -1 / ((x[0] ** 2) + 1)
+    c1 = lambda x: x[0] - 1
+
+    C = (c1,)
+    x = np.random.uniform(low=-5, high=5, size=(1,))
+    known_x = np.array((1,))
+    opt, *_ = cobyla_tester(F, C, x, known_x, tol=1e-12)
 
 
 @pytest.mark.skip('This problem has very bad response')
@@ -298,7 +328,7 @@ def test_pyramid_problem_fails():
     x = np.array((0.8418772017014113373534200945869088173, 0.8139157946609998361964244395494461060))
     known_x = np.zeros(2)
 
-    opt = cobyla_tester(F, C, x, known_x, tol=1e-6)
+    opt, *_ = cobyla_tester(F, C, x, known_x, tol=1e-6)
     
 
 @pytest.mark.skip('Better with constrain but still poor')
@@ -314,5 +344,5 @@ def test_pyramid_random_safe_start_problem():
     x = np.random.uniform(low=-1, high=1, size=2)
     known_x = np.zeros(2)
 
-    opt = cobyla_tester(F, C, x, known_x, tol=1e-1)
+    opt, *_ = cobyla_tester(F, C, x, known_x, tol=1e-1)
 

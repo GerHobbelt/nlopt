@@ -1,5 +1,6 @@
 import functools
 
+import pytest
 import numpy as np
 
 from pycobyla import Cobyla
@@ -39,6 +40,7 @@ def test_4_faces_pyramid_bad_optimization_due_to_data_precision():
     print(f'Error: {sum(opt.x ** 2)}')
     
 
+@pytest.mark.skip
 def test_4_faces_pyramid_bad_optimization_loop():
     TOL = 1e-2
     counter = total = 0
@@ -64,7 +66,8 @@ def test_4_faces_pyramid_bad_optimization_loop():
                   f' {-F((opt.x)):.3f},'
                   f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
 
-            
+
+@pytest.mark.skip
 def test_8_faces_pyramid_bad_optimization_loop():
     TOL = 1e-11
     counter = total = 0
@@ -90,6 +93,7 @@ def test_8_faces_pyramid_bad_optimization_loop():
                   f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
 
 
+@pytest.mark.skip
 def test_pyramid_bad_optimization_loop():
     TOL = 1e-1
     MAX_ITER = 500
@@ -116,6 +120,7 @@ def test_pyramid_bad_optimization_loop():
                   f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
 
 
+@pytest.mark.skip
 def test_pyramid_bad_optimization_loop_with_circle_constrain():
     TOL = 1e-1
     MAX_ITER = 500
