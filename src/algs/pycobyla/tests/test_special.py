@@ -28,16 +28,17 @@ def test_pyramid_bad_optimization_due_to_data_precision():
 
 def test_4_faces_pyramid_bad_optimization_due_to_data_precision():
     radius = 2
-    F = functools.partial(tc.pyramid_faces, center=(0, 0), radius=radius, height=-1, faces=4)
+    center = np.zeros(2)
+    F = functools.partial(tc.pyramid_faces, center=center, radius=radius, height=-1, faces=4)
     c1 = lambda x: 1 - sum(x ** 2)
     C = (c1,)
-    x = np.array((0.59783162182861104838594, 0.95270742661612928259274))
+    x = np.array((0.56699681246957212010784, 0.13886994284481257722064))
     opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-17, maxfun=3500)
     opt.run()
 
     print(f'\nOriginal: {x}')
     print(f'Optimize: {opt.x}')
-    print(f'Error: {sum(opt.x ** 2)}')
+    print(f'Error: {sum((opt.x - center) ** 2) ** .5}')
     
 
 @pytest.mark.skip

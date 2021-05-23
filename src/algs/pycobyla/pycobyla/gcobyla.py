@@ -27,7 +27,7 @@ class GCobyla(Cobyla):
 
     
     def _add_track(self):
-        if (self.optimal_vertex != self.track[-1]).all():
+        if (self.optimal_vertex == self.track[-1]).all() == False:
             self.track = np.vstack((self.track, self.optimal_vertex))
 
             
@@ -47,6 +47,7 @@ class GCobyla(Cobyla):
         
     def g_run(self):
         self.set_initial_simplex()
+        self._add_track()
         yield self.AFTER_LOAD_INITIAL_SIMPLEX_CHECKPOINT
         
         self.ibrnch = True

@@ -1,7 +1,10 @@
 import functools
 
 import numpy as np
+import nlopt
 import pytest
+
+from pycobyla import Cobyla
 
 from tests.test_originals import cobyla_tester
 
@@ -315,6 +318,48 @@ def test_linear_and_nonlinear_programming_pag_544_prob_4_random_start():
     known_x = np.array((1,))
     opt, *_ = cobyla_tester(F, C, x, known_x, tol=1e-12)
 
+
+def test_linear_and_nonlinear_programming_example_pag_435():
+    '''
+    Chapter 14.1 Quadratic programming example
+    Author: David E. Luenberger
+    
+    '''
+    F = lambda x: (2 * (x[0] ** 2)) + (x[0] * x[1]) + (x[1] ** 2) + (-12 * x[0]) + (-10 * x[1])
+    c1 = lambda x: 4 - (x[0] + x[1])
+    c2 = lambda x: x[0]
+    c3 = lambda x: x[1]
+    
+    C =  (c1, c2, c3)
+    x = np.zeros(2)
+    known_x = np.array((3/2, 5/2))
+    opt, *_ = cobyla_tester(F, C, x, known_x, tol=1e-8)
+
+
+def test_nlopt_repo_issue_370():
+    '''
+    Issue: https://github.com/stevengj/nlopt/issues/370
+    
+    '''
+
+    F = lambda x: (2 - np.cos(x[0]) + x[1] ** 2) ** 2
+    C = ()
+    x = np.zeros(2)
+
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-128, maxfun=3500)
+    opt.run()
+
+    FF = lambda x, _grad: (2 - np.cos(x[0]) + x[1] ** 2) ** 2
+    simplex_opt = nlopt.opt(nlopt.LN_NELDERMEAD, 2)
+    simplex_opt.set_min_objective(FF)
+    simplex_opt.set_maxeval(3500)
+    known_optimized = simplex_opt.optimize(x)
+
+    error = sum((opt.x - known_optimized) ** 2) ** .5
+    print(f'\nCobyla: {opt.x}')
+    print(f'Simplex (Nelder and Mead) {known_optimized}')
+    print(f'Optimize: {error}')
+    
 
 @pytest.mark.skip('This problem has very bad response')
 def test_pyramid_problem_fails():
