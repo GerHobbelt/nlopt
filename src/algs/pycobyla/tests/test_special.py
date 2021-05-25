@@ -7,13 +7,12 @@ from pycobyla import Cobyla
 
 import tests.test_custom as tc
 from tests.test_originals import cobyla_tester
-
+    
 
 def test_pyramid_bad_optimization_due_to_data_precision():
     '''
     Test pyramid seems not work well in certain cases when data is not well conditioned
 
-    See: L440_update_simplex, JSX tag
     '''
     F = functools.partial(tc.pyramid, center=np.zeros(2), width=2, height=-1)
     C = ()
@@ -27,6 +26,8 @@ def test_pyramid_bad_optimization_due_to_data_precision():
 
 
 def test_4_faces_pyramid_bad_optimization_due_to_data_precision():
+    '''
+    '''
     radius = 2
     center = np.zeros(2)
     F = functools.partial(tc.pyramid_faces, center=center, radius=radius, height=-1, faces=4)
@@ -39,10 +40,34 @@ def test_4_faces_pyramid_bad_optimization_due_to_data_precision():
     print(f'\nOriginal: {x}')
     print(f'Optimize: {opt.x}')
     print(f'Error: {sum((opt.x - center) ** 2) ** .5}')
+
+
+def test_2_planes_bad_optimization():
+    '''
+    '''
+    n1 = np.array((1, 1, 1))
+    n2 = np.array((-1, 1, 1))
+    p = np.zeros(3)
+
+    h1 = functools.partial(tc.plane, n=n1, p=p)
+    h2 = functools.partial(tc.plane, n=n2, p=p)
+
+    F = lambda x: -h1(x) if x[0] >= 0 else -h2(x)
+    c1 = lambda x: x[1]
+    C = (c1,)
+
+    x = np.array((0.23243240513870577768074, 2.66331299470191806832986))
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
+
+    print(f'\nOriginal: {x}')
+    print(f'Optimize: {opt.x}')
+    print(f'Error: {sum((opt.x - np.zeros(2)) ** 2) ** .5}')
     
 
 @pytest.mark.skip
 def test_4_faces_pyramid_bad_optimization_loop():
+    '''
+    '''
     TOL = 1e-2
     counter = total = 0
 
@@ -70,6 +95,8 @@ def test_4_faces_pyramid_bad_optimization_loop():
 
 @pytest.mark.skip
 def test_8_faces_pyramid_bad_optimization_loop():
+    '''
+    '''
     TOL = 1e-11
     counter = total = 0
 
@@ -96,8 +123,9 @@ def test_8_faces_pyramid_bad_optimization_loop():
 
 @pytest.mark.skip
 def test_pyramid_bad_optimization_loop():
+    '''
+    '''
     TOL = 1e-1
-    MAX_ITER = 500
     counter = total = 0
 
     width = 2
@@ -123,8 +151,9 @@ def test_pyramid_bad_optimization_loop():
 
 @pytest.mark.skip
 def test_pyramid_bad_optimization_loop_with_circle_constrain():
+    '''
+    '''
     TOL = 1e-1
-    MAX_ITER = 500
     counter = total = 0
 
     width = 2
@@ -146,4 +175,39 @@ def test_pyramid_bad_optimization_loop_with_circle_constrain():
             print(f'  - [{x[0]:.23f}, {x[1]:.23f},'
                   f' {opt.x[0]:.23f}, {opt.x[1]:.23f},'
                   f' {-F((opt.x)):.3f},'
+                  f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
+
+
+@pytest.mark.skip
+def test_2_planes_bad_optimization_loop():
+    '''
+    '''
+    TOL = 1e-1
+    counter = total = 0
+
+    n1 = np.array((1, 1, 1))
+    n2 = np.array((-1, 1, 1))
+    p = np.zeros(3)
+
+    h1 = functools.partial(tc.plane, n=n1, p=p)
+    h2 = functools.partial(tc.plane, n=n2, p=p)
+
+    F = lambda x: -h1(x) if x[0] >= 0 else -h2(x)
+    c1 = lambda x: x[1]
+    C = (c1,)
+    known_x = np.zeros(2)
+
+    print(f'\nError > {TOL}')
+    while (True):
+        total += 1
+        x = np.random.uniform(low=0, high=3, size=2)
+        opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-8, maxfun=3500)
+        opt.run()
+    
+        error = sum((opt.x - known_x) ** 2) ** .5
+        if error > TOL:
+            counter += 1
+            print(f'  - [{x[0]:.23f}, {x[1]:.23f},'
+                  f' {opt.x[0]:.23f}, {opt.x[1]:.23f},'
+                  f' {F((opt.x)):.3f},'
                   f' {counter}, {total}, {(counter / total) * 100:02.2f}]')

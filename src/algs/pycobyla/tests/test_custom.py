@@ -28,7 +28,12 @@ def cone(x, a=1, b=1):
 
 def paraboloid(x, a=1, b=1):
     return ((x[0] / a) ** 2) + ((x[1] / b) ** 2)
-        
+
+
+def plane(x, n, p): 
+    res = 0 if (n[-1] == 0) else (-((n[:-1] @ (x - p[:-1])) / n[-1]) + p[-1])
+    return res
+
 
 def pyramid(x, center=np.zeros(2), width=2, height=1):
     ww = width / 2
