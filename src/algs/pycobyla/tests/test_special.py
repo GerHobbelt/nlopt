@@ -2,6 +2,7 @@ import functools
 
 import pytest
 import numpy as np
+import nlopt
 
 from pycobyla import Cobyla
 
@@ -58,10 +59,19 @@ def test_2_planes_bad_optimization():
 
     x = np.array((0.23243240513870577768074, 2.66331299470191806832986))
     opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
+    opt.run()
 
     print(f'\nOriginal: {x}')
-    print(f'Optimize: {opt.x}')
+    print(f'Optimize: {opt.optimal_vertex}')
     print(f'Error: {sum((opt.x - np.zeros(2)) ** 2) ** .5}')
+
+    FF = lambda x, _grad: F(x)
+    nlopt_opt = nlopt.opt(nlopt.LN_COBYLA, 2)
+    nlopt_opt.set_min_objective(FF)
+    nlopt_opt.add_inequality_constraint(lambda x, *_: -c1(x))
+    nlopt_opt.set_maxeval(1500)
+    known_optimized = nlopt_opt.optimize(x)
+    print(f'nlopt: {known_optimized}')
     
 
 @pytest.mark.skip
