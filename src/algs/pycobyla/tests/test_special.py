@@ -15,7 +15,8 @@ def test_pyramid_bad_optimization_due_to_data_precision():
     Test pyramid seems not work well in certain cases when data is not well conditioned
 
     '''
-    F = functools.partial(tc.pyramid, center=np.zeros(2), width=2, height=-1)
+    center = np.zeros(2)
+    F = functools.partial(tc.pyramid, center=center, width=2, height=-1)
     C = ()
     x = np.array((0.94388211340220107281596, -0.61268428625789606023488))
     opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-8, maxfun=3500)
@@ -35,14 +36,23 @@ def test_4_faces_pyramid_bad_optimization_due_to_data_precision():
     c1 = lambda x: 1 - sum(x ** 2)
     C = (c1,)
     x = np.array((0.56699681246957212010784, 0.13886994284481257722064))
-    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-17, maxfun=3500)
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-17, maxfun=700)
     opt.run()
 
     print(f'\nOriginal: {x}')
     print(f'Optimize: {opt.x}')
     print(f'Error: {sum((opt.x - center) ** 2) ** .5}')
 
+    FF = lambda x, _grad: F(x)
+    nlopt_opt = nlopt.opt(nlopt.LN_COBYLA, 2)
+    nlopt_opt.set_min_objective(FF)
+    nlopt_opt.add_inequality_constraint(lambda x, *_: -c1(x))
+    nlopt_opt.set_maxeval(700)  # 750 iterations get blocked
+    known_optimized = nlopt_opt.optimize(x)
+    print(f'nlopt: {known_optimized}')
+    print(f'Error: {sum((known_optimized - center) ** 2) ** .5}')
 
+    
 def test_2_planes_bad_optimization():
     '''
     '''
@@ -72,6 +82,7 @@ def test_2_planes_bad_optimization():
     nlopt_opt.set_maxeval(1500)
     known_optimized = nlopt_opt.optimize(x)
     print(f'nlopt: {known_optimized}')
+    print(f'Error: {sum((known_optimized - np.zeros(2)) ** 2) ** .5}')
     
 
 @pytest.mark.skip
@@ -220,4 +231,44 @@ def test_2_planes_bad_optimization_loop():
             print(f'  - [{x[0]:.23f}, {x[1]:.23f},'
                   f' {opt.x[0]:.23f}, {opt.x[1]:.23f},'
                   f' {F((opt.x)):.3f},'
+                  f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
+
+            
+@pytest.mark.skip
+def test_2_planes_bad_optimization_loop_nlopt():
+    '''
+    '''
+    TOL = 1e-1
+    counter = total = 0
+
+    n1 = np.array((1, 1, 1))
+    n2 = np.array((-1, 1, 1))
+    p = np.zeros(3)
+
+    h1 = functools.partial(tc.plane, n=n1, p=p)
+    h2 = functools.partial(tc.plane, n=n2, p=p)
+
+    F = lambda x: -h1(x) if x[0] >= 0 else -h2(x)
+    c1 = lambda x: x[1]
+    C = (c1,)
+    known_x = np.zeros(2)
+
+    print(f'\nError > {TOL}')
+    while (True):
+        total += 1
+        x = np.random.uniform(low=0, high=3, size=2)
+
+        FF = lambda x, _grad: F(x)
+        nlopt_opt = nlopt.opt(nlopt.LN_COBYLA, 2)
+        nlopt_opt.set_min_objective(FF)
+        nlopt_opt.add_inequality_constraint(lambda x, *_: -c1(x))
+        nlopt_opt.set_maxeval(600)  # Up to 800 get stuck
+        known_optimized = nlopt_opt.optimize(x)
+    
+        error = sum((known_optimized - known_x) ** 2) ** .5
+        if error > TOL:
+            counter += 1
+            print(f'  - [{x[0]:.23f}, {x[1]:.23f},'
+                  f' {known_optimized[0]:.23f}, {known_optimized[1]:.23f},'
+                  f' {F(known_optimized):.3f},'
                   f' {counter}, {total}, {(counter / total) * 100:02.2f}]')

@@ -346,24 +346,13 @@ def test_nlopt_repo_issue_370():
     Issue: https://github.com/stevengj/nlopt/issues/370
     
     '''
-
     F = lambda x: (2 - np.cos(x[0]) + x[1] ** 2) ** 2
     C = ()
     x = np.zeros(2)
 
     opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-128, maxfun=3500)
     opt.run()
-
-    FF = lambda x, _grad: (2 - np.cos(x[0]) + x[1] ** 2) ** 2
-    simplex_opt = nlopt.opt(nlopt.LN_NELDERMEAD, 2)
-    simplex_opt.set_min_objective(FF)
-    simplex_opt.set_maxeval(3500)
-    known_optimized = simplex_opt.optimize(x)
-
-    error = sum((opt.x - known_optimized) ** 2) ** .5
     print(f'\nCobyla: {opt.x}')
-    print(f'Simplex (Nelder and Mead) {known_optimized}')
-    print(f'Optimize: {error}')
     
 
 @pytest.mark.skip('This problem has very bad response')
