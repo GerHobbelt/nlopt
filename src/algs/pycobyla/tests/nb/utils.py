@@ -12,7 +12,7 @@ def ax_plot_track(opt, ax, target, n_points, plot_simplex, plot_trure, aspect):
         
     if plot_simplex:
         points = np.array((opt.optimal_vertex, *(opt.sim + opt.optimal_vertex), opt.optimal_vertex))
-        ax.plot(*opt.optimal_vertex, color='orange', marker='o')
+        ax.plot(*opt.optimal_vertex, color='limegreen', marker='o')
         ax.plot(points[1:-1,0], points[1:-1,1], '.', color='blue', marker='o')
         ax.plot(points[...,0], points[...,1], '-.', color='gray', lw=2)
             

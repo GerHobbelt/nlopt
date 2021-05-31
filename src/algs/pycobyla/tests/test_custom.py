@@ -10,16 +10,13 @@ from tests.test_originals import cobyla_tester
 
 
 def gaussian(x, mu=None, sig=None, A=1):
-    n = len(x)
-    mu =  np.zeros(n) if mu is None else mu
-    sig = np.ones(n) if sig is None else sig
+    x = np.array(x)
+    nn = len(x)
+    mu =  np.zeros(nn) if mu is None else mu
+    sig = np.ones(nn) if sig is None else sig
 
     zz = ((((x - mu) / sig) ** 2) / 2).sum()
     return A * np.exp(-zz)
-
-
-def neg_gaussian(x, mu=None, sig=None, A=1):
-    return -gaussian(x, mu=mu, sig=sig, A=A)
 
 
 def cone(x, a=1, b=1):
@@ -85,6 +82,17 @@ def pyramid_faces(x, center=np.zeros(2), radius=1, height=1, faces=4):
     return (hh / total) * height
 
 
+def logistic_bivariant_density(x, mu=None, sig=None):
+    mu = np.zeros(len(x)) if mu is None else mu
+    sig = np.ones(len(x)) if sig is None else sig
+
+    sd = sig ** .5
+    kk = -(x - mu) / sd
+    res = 2 * np.exp(sum(kk)) / (sd.prod() * ((1 + np.exp(kk).sum()) ** 3))
+
+    return res
+
+
 def test_problem_gaussian_2d():
     '''
     Test gaussian 2d Gaussian with mu=(0,0), sig=(1,1) 
@@ -96,7 +104,7 @@ def test_problem_gaussian_2d():
     C4(x, y) = 1 + y >= 0
     
     '''
-    G = neg_gaussian
+    G = functools.partial(gaussian, A=-1)
     c1 = lambda x: 1 - x[0]
     c2 = lambda x: 1 + x[0]
     c3 = lambda x: 1 - x[1]
@@ -122,7 +130,7 @@ def test_problem_gaussian_2d_random_mu():
     
     '''
     mu = np.random.random(2)
-    G = functools.partial(neg_gaussian, mu=mu)
+    G = functools.partial(gaussian, mu=mu, A=-1)
     c1 = lambda x: 1 - x[0]
     c2 = lambda x: 1 + x[0]
     c3 = lambda x: 1 - x[1]
@@ -149,15 +157,15 @@ def test_problem_two_gaussian_2d():
     mu1 = np.array((-2.5, -2.5))
     mu2 = np.array((2.5, 2.5))
     
-    G1 = functools.partial(neg_gaussian, mu=mu1, A=1)
-    G2 = functools.partial(neg_gaussian, mu=mu2, A=2)
+    G1 = functools.partial(gaussian, mu=mu1, A=-1)
+    G2 = functools.partial(gaussian, mu=mu2, A=-2)
     G = lambda x: G1(x) + G2(x)
 
-    k = 5
-    c1 = lambda x: k - x[0]
-    c2 = lambda x: k + x[0]
-    c3 = lambda x: k - x[1]
-    c4 = lambda x: k + x[1]
+    border = 5
+    c1 = lambda x: border - x[0]
+    c2 = lambda x: border + x[0]
+    c3 = lambda x: border - x[1]
+    c4 = lambda x: border + x[1]
     
     C = (c1, c2, c3, c4)
     x = np.ones(2)
@@ -350,10 +358,83 @@ def test_nlopt_repo_issue_370():
     C = ()
     x = np.zeros(2)
 
-    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-128, maxfun=3500)
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
     opt.run()
     print(f'\nCobyla: {opt.x}')
+
+
+def test_logistic_bivariant_density():
+    '''
+    Fundamentos de la programación lineal y optimización en redes
+    Author: David Pujolar Morales
     
+    '''
+    mu = np.random.uniform(low=-1, high=1, size=2)
+    F = lambda x: -logistic_bivariant_density(x, mu=mu)
+    F(np.zeros(2))
+    C = ()
+    x = np.random.uniform(low=-1, high=1, size=2)
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
+    opt.run()
+    
+    error = sum((opt.x - mu) ** 2) ** .5
+    print(f'\nCobyla: {opt.x}')
+    print(f'error: {error}')
+    assert error < 1e-8
+
+
+def test_2_peaks():
+    '''
+    '''
+    mu1 = np.array((.5, .5))
+    mu2 = np.array((-.5, -.5))
+    sig = .25 * np.ones(2)
+    G1 = functools.partial(gaussian, mu=mu1, sig=sig, A=-2)
+    G2 = functools.partial(gaussian, mu=mu2, sig=sig, A=-1)
+    F = lambda x: G1(x) + G2(x)
+    k = 1
+    c1 = lambda x: k - x[0]
+    c2 = lambda x: k + x[0]
+    c3 = lambda x: k - x[1]
+    c4 = lambda x: k + x[1]
+    C = (c1, c2, c3, c4)
+
+    x = np.zeros(2)
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
+    opt.run()
+
+    error = sum((opt.x - mu1) ** 2) ** .5
+    print(f'\nCobyla: {opt.x}')
+    print(f'error: {error}')
+
+
+def test_2_peaks_random_start():
+    '''
+    '''
+    mu1 = np.array((.5, .5))
+    mu2 = np.array((-.5, -.5))
+    sig = .5 * np.ones(2)
+    G1 = functools.partial(gaussian, mu=mu1, sig=sig, A=-2)
+    G2 = functools.partial(gaussian, mu=mu2, sig=sig, A=-1)
+    F = lambda x: G1(x) + G2(x)
+    k = 1
+    c1 = lambda x: k - x[0]
+    c2 = lambda x: k + x[0]
+    c3 = lambda x: k - x[1]
+    c4 = lambda x: k + x[1]
+    C = (c1, c2, c3, c4)
+
+    x = np.random.uniform(low=-1, high=1, size=2)
+    opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
+    opt.run()
+
+    error1 = sum((opt.x - mu1) ** 2) ** .5
+    error2 = sum((opt.x - mu2) ** 2) ** .5
+    print(f'\nStart: {x}')
+    print(f'Cobyla: {opt.x}')
+    print(f"mu1 error: {error1} {'*' if error1 < error2 else ''}")
+    print(f"mu2 error: {error2} {'*' if error2 < error1 else ''}")
+
 
 @pytest.mark.skip('This problem has very bad response')
 def test_pyramid_problem_fails():
