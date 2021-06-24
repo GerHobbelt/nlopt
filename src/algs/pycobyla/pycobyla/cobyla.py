@@ -402,7 +402,6 @@ class Cobyla:
 
         # Branch back for further iterations with the current RHO
         if (trured > 0) and (trured >= (self.RHO_ACCEPTABILITY_2 * prerem)):
-            # self.ibrnch = True  # This is set in paper but not in the C implementation
             return self.NEW_ITERATION
 
         return self.L550_update_params(ifull)
