@@ -315,7 +315,7 @@ class Cobyla:
         # Calculate DX=x(*)-x(0). Branch if the length of DX is less than 0.5*RHO
         trstlp = Trstlp(self)
         ifull, dx = trstlp.run()
-        
+
         if ifull is False:
             temp = sum(dx ** 2)
             cond = (temp < ((self.RHO_ACCEPTABILITY_1 * self.rho) ** 2))
@@ -378,12 +378,12 @@ class Cobyla:
         # JSX: This is not seems to be explained in the original paper
         jdrop = -1
         ratio = 1 if (trured <= 0) else 0
-        temp = abs(dx @ self.simi)
-        for j, value in zip(range(self.n), temp):
-            if value > ratio:
-                ratio, jdrop = value, j
+        ratios = abs(dx @ self.simi)
+        for j, new_ratio in zip(range(self.n), ratios):
+            if new_ratio > ratio:
+                jdrop, ratio = j, new_ratio
                 
-        sigbar = temp * self.vsig
+        sigbar = ratios * self.vsig
         edgmax = self.DELTA * self.rho
         mask = (sigbar >= self.parsig) | (sigbar >= self.vsig)
 
