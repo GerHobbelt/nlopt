@@ -13,7 +13,7 @@ RHOEND = 1e-9
 
 def test_problem_min_at_the_x_boundary():
     mu = np.array((1, np.random.random()))
-    G = functools.partial(tc.neg_gaussian, mu=mu)
+    G = functools.partial(tc.gaussian, mu=mu, A=-1)
     c1 = lambda x: 1 - x[0]
     c2 = lambda x: 1 + x[0]
     c3 = lambda x: 1 - x[1]
@@ -28,9 +28,8 @@ def test_problem_min_at_the_x_boundary():
 
 
 def test_problem_min_at_the_y_boundary():
-    G = tc.neg_gaussian
     mu = np.array((np.random.random(), 1))
-    G = functools.partial(tc.neg_gaussian, mu=mu)
+    G = functools.partial(tc.gaussian, mu=mu, A=-1)
     c1 = lambda x: 1 - x[0]
     c2 = lambda x: 1 + x[0]
     c3 = lambda x: 1 - x[1]
@@ -45,10 +44,9 @@ def test_problem_min_at_the_y_boundary():
 
 
 def test_problem_min_at_the_edge_corner_boundary():
-    G = tc.neg_gaussian
     mu = random.choice(((1,1), (-1, 1), (-1, 1), (-1, -1)))
     
-    G = functools.partial(tc.neg_gaussian, mu=mu)
+    G = functools.partial(tc.gaussian, mu=mu, A=-1)
     c1 = lambda x: 1 - x[0]
     c2 = lambda x: 1 + x[0]
     c3 = lambda x: 1 - x[1]
@@ -71,7 +69,7 @@ def test_problem_min_out_of_the_boundary():
     y_circle = r_circle(x_circle, radius=radius, sig=sig)
     mu = np.array((x_circle, y_circle))
     
-    G = functools.partial(tc.neg_gaussian, mu=mu)
+    G = functools.partial(tc.gaussian, mu=mu, A=-1)
     c1 = lambda x: 1 - x[0]
     c2 = lambda x: 1 + x[0]
     c3 = lambda x: 1 - x[1]
@@ -95,7 +93,7 @@ def test_problem_min_out_of_the_boundary_circle():
     y_circle = r_circle(x_circle, radius=radius, sig=sig)
     mu = np.array((x_circle, y_circle))
     
-    G = functools.partial(tc.neg_gaussian, mu=mu)
+    G = functools.partial(tc.gaussian, mu=mu, A=-1)
     c1 = lambda x: 1 - sum(x ** 2)
 
     C = (c1,)

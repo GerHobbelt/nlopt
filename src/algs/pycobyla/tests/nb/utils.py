@@ -2,6 +2,13 @@ import numpy as np
 import  matplotlib.pyplot as plt
 
 
+def ax_plot_simplex(ax, optimal_vertex, sim):
+    simplex = np.array((optimal_vertex, *(sim + optimal_vertex), optimal_vertex))
+    ax.plot(*optimal_vertex, color='limegreen', marker='o')
+    ax.plot(simplex[1:-1,0], simplex[1:-1,1], '.', color='blue', marker='o')
+    ax.plot(simplex[...,0], simplex[...,1], '-.', color='gray', lw=2)
+    
+
 def ax_plot_track(opt, ax, target, n_points, plot_simplex, plot_trure, aspect):
     track = opt.track[-n_points:]
     ax.plot(track[:, 0], track[:, 1], linestyle='-', color='red', marker='o')
@@ -11,10 +18,8 @@ def ax_plot_track(opt, ax, target, n_points, plot_simplex, plot_trure, aspect):
     ax.plot(target[0], target[1], color='limegreen', marker='*')
         
     if plot_simplex:
-        points = np.array((opt.optimal_vertex, *(opt.sim + opt.optimal_vertex), opt.optimal_vertex))
-        ax.plot(*opt.optimal_vertex, color='limegreen', marker='o')
-        ax.plot(points[1:-1,0], points[1:-1,1], '.', color='blue', marker='o')
-        ax.plot(points[...,0], points[...,1], '-.', color='gray', lw=2)
+        #simplex = np.array((opt.optimal_vertex, *(opt.sim + opt.optimal_vertex), opt.optimal_vertex))
+        ax_plot_simplex(ax, opt.optimal_vertex, opt.sim)
             
     if plot_trure:
         trust_region = plt.Circle(opt.optimal_vertex, opt.rho, color='khaki', fill=True, alpha=0.5)

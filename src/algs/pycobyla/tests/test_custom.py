@@ -229,6 +229,27 @@ def test_problem_shifted_cone_constrains():
     cobyla_tester(F, C, x, x0)
 
 
+def test_problem_shifted_cone_constrains_fixed():
+    '''
+    Test cone
+    F(x, y) = ((x - x0)^2 + (y - y0)^2) ** .5
+    
+    '''
+    x0 = np.array((0.12322525149802754, 0.7876063619785026))
+    F = lambda x: cone(x - x0)
+    
+    k = 5
+    c1 = lambda x: k - x[0]
+    c2 = lambda x: k + x[0]
+    c3 = lambda x: k - x[1]
+    c4 = lambda x: k + x[1]
+    C = (c1, c2, c3, c4)
+    
+    x = np.ones(2)
+
+    cobyla_tester(F, C, x, x0)
+
+
 def test_problem_paraboloid():
     '''
     Test paraboloid
