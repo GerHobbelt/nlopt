@@ -93,6 +93,13 @@ def logistic_bivariant_density(x, mu=None, sig=None):
     return res
 
 
+def waves(x, T0=2*np.pi, A0=1, T1=2*np.pi, A1=1):
+    w = (2 * np.pi)
+    w0 = w / T0
+    w1 = w / T1
+    return (A0 * np.cos(w0 * x[0])) + (A1 * np.cos(w1 * x[1]))
+
+
 def test_problem_gaussian_2d():
     '''
     Test gaussian 2d Gaussian with mu=(0,0), sig=(1,1) 
@@ -455,6 +462,30 @@ def test_2_peaks_random_start():
     print(f'Cobyla: {opt.x}')
     print(f"mu1 error: {error1} {'*' if error1 < error2 else ''}")
     print(f"mu2 error: {error2} {'*' if error2 < error1 else ''}")
+
+
+def test_wave_field_random_start():
+    F = functools.partial(waves, T0=1, A0=1, T1=1, A1=1)
+    k = 1
+    c1 = lambda x: k - x[0]
+    c2 = lambda x: k + x[0]
+    c3 = lambda x: k - x[1]
+    c4 = lambda x: k + x[1]
+    C = (c1, c2, c3, c4)
+
+    start_x = np.random.uniform(low=-.7, high=.7, size=2)
+    centers = np.array(((.5, .5), (-.5, .5), (-.5, -.5), (.5, -.5)))
+    dist = ((centers - start_x)**2).sum(axis=1)
+    _, idx = min(zip(dist, range(len(dist))))
+    known_x = centers[idx]
+    
+    opt = Cobyla(start_x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
+    opt.run()
+
+    error = sum((opt.x - known_x) ** 2) ** .5
+    print(f'\nStart: {start_x}')
+    print(f'Cobyla: {opt.x}')
+    print(f'Error: {error}')
 
 
 @pytest.mark.skip('This problem has very bad response')

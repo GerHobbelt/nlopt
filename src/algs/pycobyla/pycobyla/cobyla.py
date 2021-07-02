@@ -375,7 +375,6 @@ class Cobyla:
         # positive. Firstly, JDROP is set to the index of the vertex that is to be
         # replaced
 
-        # JSX: This is not seems to be explained in the original paper
         jdrop = -1
         ratio = 1 if (trured <= 0) else 0
         ratios = abs(dx @ self.simi)
