@@ -89,7 +89,7 @@ def test_2_planes_bad_optimization():
 def test_4_faces_pyramid_bad_optimization_loop():
     '''
     '''
-    TOL = 1e-2
+    w_error = 1e-2
     counter = total = 0
 
     radius = 2
@@ -98,19 +98,19 @@ def test_4_faces_pyramid_bad_optimization_loop():
     C = (c1, )
     known_x = np.zeros(2)
 
-    print(f'\nError > {TOL}')
     while (True):
         total += 1
         x = np.random.uniform(low=-1, high=1, size=2)
         opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
         opt.run()
-    
+
         error = sum((opt.x - known_x) ** 2) ** .5
-        if error > TOL:
+        if error > w_error:
+            w_error = error
             counter += 1
             print(f'  - [{x[0]:.23f}, {x[1]:.23f},'
                   f' {opt.x[0]:.23f}, {opt.x[1]:.23f},'
-                  f' {-F((opt.x)):.3f},'
+                  f' {-opt.F((opt.x)):.3f},'
                   f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
 
 
