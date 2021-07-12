@@ -1,11 +1,13 @@
 import functools
 
+import nlopt
+import scipy.optimize
 import pytest
 import numpy as np
-import nlopt
 
 from pycobyla import Cobyla
 
+import tests.data
 import tests.test_custom as tc
 from tests.test_originals import cobyla_tester
     
@@ -111,34 +113,6 @@ def test_4_faces_pyramid_bad_optimization_loop():
             print(f'  - [{x[0]:.23f}, {x[1]:.23f},'
                   f' {opt.x[0]:.23f}, {opt.x[1]:.23f},'
                   f' {-opt.F((opt.x)):.3f},'
-                  f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
-
-
-@pytest.mark.skip
-def test_8_faces_pyramid_bad_optimization_loop():
-    '''
-    '''
-    TOL = 1e-11
-    counter = total = 0
-
-    radius = 2
-    F = functools.partial(tc.pyramid_faces, center=(0, 0), radius=radius, height=-1, faces=8)
-    C = ()
-    known_x = np.zeros(2)
-
-    print(f'\nError > {TOL}')
-    while (True):
-        total += 1
-        x = np.random.uniform(low=-1, high=1, size=2)
-        opt = Cobyla(x, F, C, rhobeg=.5, rhoend=1e-12, maxfun=3500)
-        opt.run()
-    
-        error = sum((opt.x - known_x) ** 2) ** .5
-        if error > TOL:
-            counter += 1
-            print(f'  - [{x[0]:.23f}, {x[1]:.23f},'
-                  f' {opt.x[0]:.23f}, {opt.x[1]:.23f},'
-                  f' {-F((opt.x)):.3f},'
                   f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
 
 
@@ -272,3 +246,97 @@ def test_2_planes_bad_optimization_loop_nlopt():
                   f' {known_optimized[0]:.23f}, {known_optimized[1]:.23f},'
                   f' {F(known_optimized):.3f},'
                   f' {counter}, {total}, {(counter / total) * 100:02.2f}]')
+
+            
+@pytest.mark.skip
+def test_waves_field():
+    '''
+    '''
+    T0, A0 = 1, 1
+    T1, A1 = 1, 1
+    border = 1
+
+    from pycobyla.cobyla import logger
+    logger.disabled = True
+    
+    F = functools.partial(tc.waves, T0=T0, A0=A0, T1=T1, A1=A1)
+    c1 = lambda x: border - x[0]
+    c2 = lambda x: border + x[0]
+    c3 = lambda x: border - x[1]
+    c4 = lambda x: border + x[1]
+    C = (c1, c2, c3, c4)
+
+    print('')
+    while (True):
+        start_x = np.random.uniform(low=-1, high=1, size=2)
+        opt = Cobyla(start_x, F, C, rhobeg=.1, rhoend=1e-12, maxfun=6000)
+        try:
+            opt.run()
+        except UserWarning:
+            print(f'({start_x[0]:.23f}, {start_x[1]:.23f}),')
+
+            
+def test_waves_scipy():
+    T0, A0 = 1, 1
+    T1, A1 = 1, 1
+    start_x = (-0.32951277043785864862002, 0.97237533384796859259325)
+    border = 1
+    rhobeg = .1
+    rhoend = 1e-12
+    maxiter = 6000
+
+    F = functools.partial(tc.waves, T0=T0, A0=A0, T1=T1, A1=A1)
+    c1 = lambda x: border - x[0]
+    c2 = lambda x: border + x[0]
+    c3 = lambda x: border - x[1]
+    c4 = lambda x: border + x[1]
+    C = (c1, c2, c3, c4)
+    
+    opt = Cobyla(start_x, F, C, rhobeg=rhobeg, rhoend=rhoend, maxfun=maxiter)
+
+    try:
+        opt.run()
+    except UserWarning:
+        pass
+    
+    print(f'PyCobyla: {opt.F(opt.optimal_vertex)}\n')
+
+    
+    res = scipy.optimize.minimize(
+        opt.F, start_x, args=(), method='COBYLA', constraints=(), 
+        options={'rhobeg': rhobeg, 'maxiter': maxiter, 'disp': False, 'tol': rhoend}
+    )
+    print(res)
+
+
+def test_bad_waves_field_scipy():
+    '''
+    This test check that scypi.optimize COBYLA is not working well
+    with detected points
+    
+    '''
+    T0, A0 = 1, 1
+    T1, A1 = 1, 1
+    border = 1
+    rhobeg = .1
+    rhoend = 1e-12
+    maxiter = 6000
+
+    F = functools.partial(tc.waves, T0=T0, A0=A0, T1=T1, A1=A1)
+    c1 = lambda x: border - x[0]
+    c2 = lambda x: border + x[0]
+    c3 = lambda x: border - x[1]
+    c4 = lambda x: border + x[1]
+    C = (c1, c2, c3, c4)
+
+    for start_x in tests.data.BAD_WAVES_FIELD_START_X:
+        res = scipy.optimize.minimize(
+            F, start_x, args=(), method='COBYLA', constraints=(), 
+            options={'rhobeg': rhobeg, 'maxiter': maxiter, 'disp': False, 'tol': rhoend}
+        )
+        
+        norm = sum(res.x**2)**.5
+        assert norm > 1, 'This mean scipy is optimize well'
+        
+
+    

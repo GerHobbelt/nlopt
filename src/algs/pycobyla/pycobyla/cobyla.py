@@ -38,13 +38,14 @@ class Cobyla:
     float = np.float128
     
     
-    def __init__(self, x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
-        n = len(x)
+    def __init__(self, start_x, F, C, rhobeg=.5, rhoend=1e-6, maxfun=3500):
+        n = len(start_x)
         m = len(C)
 
         self.n = n
         self.m = m
-        self.x = np.array(x, dtype=self.float)
+        self.start_x = start_x
+        self.x = np.array(start_x, dtype=self.float)
         self.F = F
         self.C = C
         self.rhoend = rhoend
